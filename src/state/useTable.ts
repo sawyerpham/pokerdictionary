@@ -159,7 +159,7 @@ export function useTable() {
           return step(cur, act(t, decide(t, p, cur.tilt[key(t, seat)] ?? 0)));
         });
     } else return;
-    const h = setTimeout(run, ms(wait));
+    const h = setTimeout(run, t.street === 'done' ? Math.max(ms(s.busy) + 1000, ms(wait)) : ms(wait));
     return () => clearTimeout(h);
   }, [s, nextHand, profile, step, settings.npcThinkMs]);
 

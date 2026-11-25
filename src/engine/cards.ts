@@ -147,3 +147,62 @@ export const preflopPercentile = (() => {
     return cache.get(s)!;
   };
 })();
+
+export interface Outlook {
+  equity: number[]; // each seat's share of the pot, ties split, 0..1
+  win: number; // the hero's shares of all deals
+  tie: number;
+  lose: number;
+  finish: number[]; // chance the hero's final hand is each of CATEGORIES
+}
+
+/**
+ * Deals many times with every seat's known hole cards fixed (0, 1 or 2 of them) and the rest, plus the rest
+ * of the board, random.
+ */
+export function outlook(hands: Card[][], board: Card[], hero: number, iterations = 10000, rng: Rng = Math.random): Outlook {
+  const dead = new Set([...hands.flat(), ...board]);
+  const live = [...Array(52).keys()].filter((c) => !dead.has(c));
+  const toCome = 5 - board.length;
+  const need = toCome + hands.reduce((n, h) => n + 2 - h.length, 0);
+  const finish = new Array(CATEGORIES.length).fill(0);
+  const equity = new Array(hands.length).fill(0);
+  const scores = new Array(hands.length).fill(0);
+  let win = 0, tie = 0;
+  for (let it = 0; it < iterations; it++) {
+    for (let i = 0; i < need; i++) {
+      const j = i + Math.floor(rng() * (live.length - i));
+      [live[i], live[j]] = [live[j], live[i]];
+    }
+    const runout = board.concat(live.slice(0, toCome));
+    let next = toCome;
+    let best = 0, winners = 0;
+    for (let p = 0; p < hands.length; p++) {
+      const hole = hands[p].slice();
+      while (hole.length < 2) hole.push(live[next++]);
+      const score = evaluate(hole.concat(runout));
+      scores[p] = score;
+      if (score > best) [best, winners] = [score, 1];
+      else if (score === best) winners++;
+    }
+    for (let p = 0; p < hands.length; p++) if (scores[p] === best) equity[p] += 1 / winners;
+    finish[categoryOf(scores[hero])]++;
+    if (scores[hero] === best) {
+      if (winners === 1) win++;
+      else tie++;
+    }
+  }
+  const share = (n: number) => n / iterations;
+  return { equity: equity.map(share), win: share(win), tie: share(tie), lose: share(iterations - win - tie), finish: finish.map(share) };
+}
+
+/** Next cards that lift your hand to a better type, ignoring cards that only improve the shared board. */
+export function outsFor(hole: Card[], board: Card[], alsoDead: Card[] = []): Card[] {
+  const now = categoryOf(evaluate([...hole, ...board]));
+  const dead = new Set([...hole, ...board, ...alsoDead]);
+  return [...Array(52).keys()].filter((c) => {
+    if (dead.has(c)) return false;
+    const mine = categoryOf(evaluate([...hole, ...board, c]));
+    return mine > now && mine > categoryOf(evaluate([...board, c]));
+  });
+}

@@ -12,6 +12,7 @@ export interface Settings {
   spectateShowCards: boolean;
   autoRebuy: boolean; // NPCs who bust buy back in
   showPositions: boolean; // UTG, HJ, CO… tags on the seats
+  evaluatorSeesAll: boolean; // the live evaluator uses everyone's actual cards
   chipColors: Record<number, string>; // by denomination
   chipDesign: ChipDesign;
 }
@@ -48,6 +49,7 @@ const DEFAULTS: Settings = {
   spectateShowCards: true,
   autoRebuy: true,
   showPositions: true,
+  evaluatorSeesAll: false,
   chipColors: VEGAS_CHIPS,
   chipDesign: 'classic',
 };

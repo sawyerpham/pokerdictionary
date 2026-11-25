@@ -1,5 +1,5 @@
 // Engine self-check: `node src/engine/selfcheck.ts`. Throws on the first failure.
-import { categoryOf, describe, equity, evaluate, type Card } from './cards.ts';
+import { categoryOf, describe, equity, evaluate, outlook, outsFor, type Card } from './cards.ts';
 import { decide } from './bots.ts';
 import { act, newTable, pots, startHand, type Table } from './holdem.ts';
 import { PRESETS } from './profiles.ts';
@@ -25,6 +25,16 @@ ok(evaluate(c('Qc Qd 7h 7s 4d 4c 9h')) === evaluate(c('Qh Qs 7c 7d 9s 2c 3d')), 
 ok(describe(evaluate(c('Kc Kd Kh 7s 7d'))) === 'Kings full of Sevens', 'describe full house');
 const aa = equity(c('As Ah'), [], 1, 4000);
 ok(aa > 0.82 && aa < 0.88, `AA vs random ~85%, got ${aa}`);
+
+// Evaluator: outcome shares add up, a flush draw has 9 flush outs (plus pairing outs), the nuts never lose.
+const unknown = (n: number): Card[][] => Array.from({ length: n }, () => []);
+const o = outlook([c('As Ks'), ...unknown(3)], c('2s 7s 9d'), 0, 4000);
+ok(Math.abs(o.win + o.tie + o.lose - 1) < 1e-9 && Math.abs(o.finish.reduce((a, x) => a + x, 0) - 1) < 1e-9, 'outlook shares');
+ok(Math.abs(o.equity.reduce((a, x) => a + x, 0) - 1) < 1e-9, 'equities add to 1');
+const known = outlook([c('As Ah'), c('Ks Kh')], [], 0, 4000);
+ok(known.equity[0] > 0.78 && known.equity[0] < 0.86, `AA vs KK ~82%, got ${known.equity[0]}`);
+ok(outsFor(c('As Ks'), c('2s 7s 9d')).filter((x) => x % 4 === 0).length === 9, 'flush draw outs');
+ok(outlook([c('As Ks'), ...unknown(5)], c('Qs Js Ts'), 0, 500).win === 1, 'royal flush always wins');
 
 // Side pots: A all in 50, B all in 100, C covers 200 -> main 150, side 100, side 100 (C alone).
 const t0 = newTable(['a', 'b', 'c'], 0, 1, 2);
