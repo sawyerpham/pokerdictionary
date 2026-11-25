@@ -6,7 +6,7 @@ No-limit hold'em against customizable NPCs, or spectate them playing each other.
 
 ## Features
 
-- **Table**: 2–10 player NLHE cash game with side pots, animations, and an equity hint
+- **Table**: 2–9 player NLHE cash game with side pots, animations, and an equity hint
 - **Players**: famous-style presets and archetypes, every knob editable, plus your own NPCs
 - **Spectate**: watch an all-NPC table at up to 4× speed
 

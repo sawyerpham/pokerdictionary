@@ -1,5 +1,6 @@
+import { ChipPile, ChipSwatch } from '../components/Chips';
 import { ActionRow, Group, Row, Segmented, Toggle } from '../components/RuleControls';
-import { STAKES, useSettings } from '../state/settingsStore';
+import { DENOMS, STAKES, VEGAS_CHIPS, type ChipDesign, useSettings } from '../state/settingsStore';
 
 export function SettingsPage() {
   const s = useSettings((st) => st.settings);
@@ -19,7 +20,7 @@ export function SettingsPage() {
               onChange={(bb) => update(STAKES.find((x) => x.bb === bb)!)}
             />
           </Row>
-          <Row title="Your buy-in" hint="In big blinds">
+          <Row title="Buy-in" hint="In big blinds, for every seat">
             <Segmented label="Buy-in" value={s.buyInBb} options={[40, 100, 200, 300].map((v) => ({ value: v, label: `${v}` }))} onChange={(v) => update({ buyInBb: v })} />
           </Row>
           <Row title="NPCs rebuy" hint="When they can't cover the big blind">
@@ -34,13 +35,60 @@ export function SettingsPage() {
         </Group>
 
         <Group title="Appearance">
+          <Row title="Positions" hint="UTG, UTG+1, HJ, CO… on each seat">
+            <Toggle label="Positions" checked={s.showPositions} onChange={(v) => update({ showPositions: v })} />
+          </Row>
           <Row title="Animations" hint="Dealing, chips, folds and shoves">
             <Toggle label="Animations" checked={s.animations} onChange={(v) => update({ animations: v })} />
+          </Row>
+          <Row title="NPC think time" hint="How long NPCs take to act">
+            <Segmented
+              label="NPC think time"
+              value={s.npcThinkMs}
+              options={[300, 700, 1200, 2000, 3000].map((v) => ({ value: v, label: `${v / 1000}s` }))}
+              onChange={(v) => update({ npcThinkMs: v })}
+            />
           </Row>
           <Row title="Speed" hint="Animations and NPC think time">
             <Segmented label="Speed" value={s.speed} options={[0.5, 1, 2, 4].map((v) => ({ value: v, label: `${v === 0.5 ? '½' : v}×` }))} onChange={(v) => update({ speed: v })} />
           </Row>
         </Group>
+
+        <Group title="Chips">
+          <div className="flex items-end justify-center gap-6 px-4 pt-5 pb-3">
+            {DENOMS.map((d) => (
+              <ChipPile key={d} amount={d * 5} bb={d} cols={1} perCol={5} />
+            ))}
+          </div>
+          <Row title="Design">
+            <Segmented<ChipDesign>
+              label="Chip design"
+              value={s.chipDesign}
+              options={[
+                { value: 'classic', label: 'Classic' },
+                { value: 'striped', label: 'Striped' },
+                { value: 'ring', label: 'Ring' },
+                { value: 'solid', label: 'Solid' },
+              ]}
+              onChange={(v) => update({ chipDesign: v })}
+            />
+          </Row>
+          {DENOMS.map((d) => (
+            <Row key={d} title={`$${d.toLocaleString()}`}>
+              <label className="flex cursor-pointer items-center gap-3">
+                <ChipSwatch denom={d} />
+                <input
+                  type="color"
+                  aria-label={`$${d} chip color`}
+                  value={s.chipColors[d]}
+                  onChange={(e) => update({ chipColors: { ...s.chipColors, [d]: e.target.value } })}
+                  className="h-7 w-12 cursor-pointer rounded bg-transparent"
+                />
+              </label>
+            </Row>
+          ))}
+        </Group>
+        <ActionRow onClick={() => update({ chipColors: VEGAS_CHIPS, chipDesign: 'classic' })}>Reset to Vegas Chips</ActionRow>
 
         <ActionRow onClick={reset}>Reset Settings</ActionRow>
       </div>

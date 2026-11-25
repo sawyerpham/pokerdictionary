@@ -1,0 +1,54 @@
+// Every source the guides cite, checked against the text it supports. Guides pick and number their own.
+import type { Source } from './ui';
+
+export const SRC = {
+  holdem: { by: 'Wikipedia', title: "Texas hold 'em", url: "https://en.wikipedia.org/wiki/Texas_hold_%27em" },
+  robertsRules: {
+    by: 'Bob Ciaffone',
+    title: "Robert's Rules of Poker (home edition)",
+    where: 'Hosted by Pagat.com',
+    url: 'https://www.pagat.com/docs/RobsPkrRulesHome.pdf',
+  },
+  tda: { by: 'Poker Tournament Directors Association', title: 'Poker TDA Rules', url: 'https://www.pokertda.com/poker-tda-rules/' },
+  betting: { by: 'Wikipedia', title: 'Betting in poker', url: 'https://en.wikipedia.org/wiki/Betting_in_poker' },
+  probability: { by: 'Wikipedia', title: 'Poker probability', url: 'https://en.wikipedia.org/wiki/Poker_probability' },
+  handsList: { by: 'Wikipedia', title: 'List of poker hands', url: 'https://en.wikipedia.org/wiki/List_of_poker_hands' },
+  engine: {
+    by: 'Poker Dictionary',
+    title: "Computed with this site's hand evaluator: 40,000 random deals per hand against one opponent, 60,000 for the multiway check",
+    url: 'https://github.com/sawyerpham/pokerdictionary/blob/main/src/engine/cards.ts',
+  },
+  potOdds: { by: 'Wikipedia', title: 'Pot odds', url: 'https://en.wikipedia.org/wiki/Pot_odds' },
+  cashGame: { by: 'Wikipedia', title: 'Cash game', url: 'https://en.wikipedia.org/wiki/Cash_game' },
+  tournament: { by: 'Wikipedia', title: 'Poker tournament', url: 'https://en.wikipedia.org/wiki/Poker_tournament' },
+  icm: { by: 'Wikipedia', title: 'Independent Chip Model', url: 'https://en.wikipedia.org/wiki/Independent_Chip_Model' },
+  rake: { by: 'Wikipedia', title: 'Rake (poker)', url: 'https://en.wikipedia.org/wiki/Rake_(poker)' },
+  dealersChoice: { by: 'Wikipedia', title: "Dealer's choice", url: "https://en.wikipedia.org/wiki/Dealer%27s_choice" },
+  upswingCashVsMtt: {
+    by: 'Upswing Poker',
+    title: 'Cash Games vs Tournaments: Which Should I Play?',
+    url: 'https://upswingpoker.com/cash-games-vs-tournaments-strategy-comparison/',
+  },
+  bluff: { by: 'Wikipedia', title: 'Bluff (poker)', url: 'https://en.wikipedia.org/wiki/Bluff_(poker)' },
+  tilt: { by: 'Wikipedia', title: 'Tilt (poker)', url: 'https://en.wikipedia.org/wiki/Tilt_(poker)' },
+  position: { by: 'Wikipedia', title: 'Position (poker)', url: 'https://en.wikipedia.org/wiki/Position_(poker)' },
+  strategy: { by: 'Wikipedia', title: 'Poker strategy', url: 'https://en.wikipedia.org/wiki/Poker_strategy' },
+  ftop: { by: 'Wikipedia', title: 'Fundamental theorem of poker', url: 'https://en.wikipedia.org/wiki/Fundamental_theorem_of_poker' },
+  startingHands: { by: 'Wikipedia', title: "Texas hold 'em starting hands", url: "https://en.wikipedia.org/wiki/Texas_hold_%27em_starting_hands" },
+  vpip: { by: 'PokerStrategy.com', title: 'VPIP (glossary)', url: 'https://www.pokerstrategy.com/glossary/VPIP/' },
+  hud: {
+    by: 'PokerNews, interview with David Chicotsky',
+    title: 'HUD Basics with David "The Maven" Chicotsky, Part 1',
+    url: 'https://www.pokernews.com/strategy/hud-basics-with-david-the-maven-chicotsky-part-1-9505.htm',
+  },
+  upswingRfi: {
+    by: 'Upswing Poker',
+    title: 'My Unexploitable Preflop Opening Strategy Explained',
+    url: 'https://upswingpoker.com/preflop-open-strategy-rfi-explained/',
+  },
+  upswingSizing: { by: 'Upswing Poker', title: '8 Rules to Help You Choose the Perfect Bet Size', url: 'https://upswingpoker.com/bet-size-strategy-tips-rules/' },
+  sklansky: { by: 'David Sklansky', title: 'The Theory of Poker', where: 'Two Plus Two Publishing, 4th ed., 1999' },
+  sklanskyMalmuth: { by: 'David Sklansky and Mason Malmuth', title: "Hold 'em Poker for Advanced Players", where: 'Two Plus Two Publishing, 1999' },
+  mop: { by: 'Bill Chen and Jerrod Ankenman', title: 'The Mathematics of Poker', where: 'ConJelCo, 2006' },
+  tendler: { by: 'Jared Tendler and Barry Carter', title: 'The Mental Game of Poker', where: 'Jared Tendler LLC, 2011' },
+} satisfies Record<string, Source>;

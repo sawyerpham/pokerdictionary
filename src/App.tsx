@@ -1,9 +1,14 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { NavBar } from './components/NavBar';
 import { HomePage } from './pages/HomePage';
-import { PlayersPage } from './pages/PlayersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TablePage } from './pages/TablePage';
+import { GuidesPage } from './pages/GuidesPage';
+import { ChipsPage } from './pages/ChipsPage';
+
+function DeepDiveRedirect() {
+  return <Navigate to={`/guides/${useParams().slug}`} replace />;
+}
 
 function App() {
   return (
@@ -12,7 +17,12 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/table" element={<TablePage />} />
-        <Route path="/players" element={<PlayersPage />} />
+        <Route path="/guides" element={<GuidesPage />} />
+        <Route path="/guides/:slug" element={<GuidesPage />} />
+        {/* Deep dives used to have their own page. */}
+        <Route path="/deep-dives" element={<Navigate to="/guides/art-of-bluffing" replace />} />
+        <Route path="/deep-dives/:slug" element={<DeepDiveRedirect />} />
+        <Route path="/chips" element={<ChipsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </div>

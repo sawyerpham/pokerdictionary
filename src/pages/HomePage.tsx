@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { PRESETS } from '../engine/profiles';
 
 const FEATURES = [
-  { tag: 'Table', title: "No-limit hold'em", blurb: 'A full cash game for 2 to 10 players: blinds, min-raises, side pots, and showdowns.', to: '/table' },
-  { tag: 'NPCs', title: 'Customizable players', blurb: 'Every NPC has 13 knobs: VPIP, PFR, 3-bet, aggression, bluffing, calling down, sizing, shoves, tilt, and more.', to: '/players' },
-  { tag: 'Presets', title: 'Famous styles', blurb: `${PRESETS.filter((p) => p.group !== 'Archetypes').length} pro and celebrity caricatures, plus classic archetypes from the Rock to the Maniac.`, to: '/players' },
+  { tag: 'Table', title: "No-limit hold'em", blurb: 'A full cash game for 2 to 9 players: blinds, min-raises, side pots, and showdowns.', to: '/table' },
+  { tag: 'Opponents', title: 'Pick who you play', blurb: 'Start heads-up against a random player, then fill the table with up to eight pros, entertainers and classic player types.', to: '/table' },
+  { tag: 'Presets', title: 'Famous styles', blurb: `${PRESETS.filter((p) => p.group !== 'Archetypes').length} pro and celebrity caricatures. Customize any of their 13 style knobs, from VPIP to tilt.`, to: '/table' },
   { tag: 'Spectate', title: 'Watch them play', blurb: 'Hand the seat to an NPC and watch the table run at up to 4× speed, hole cards up.', to: '/table' },
   { tag: 'Motion', title: 'Table animations', blurb: 'Cards dealt around the table, chips thrown in, folds mucked, shoves pushed, and pots pushed to the winner.', to: '/table' },
   { tag: 'Tools', title: 'Equity and tracking', blurb: 'A hidden equity readout with pot odds, a hand log, session results, and a profit graph.', to: '/table' },
@@ -23,8 +23,8 @@ export function HomePage() {
             <Link to="/table" className="flex min-h-11 items-center rounded-full bg-[var(--accent)] px-6 text-[17px] text-white transition hover:brightness-110">
               Open Table
             </Link>
-            <Link to="/players" className="flex min-h-11 items-center gap-1.5 text-[17px] text-[var(--accent)] hover:underline">
-              Pick your opponents
+            <Link to="/guides" className="flex min-h-11 items-center gap-1.5 text-[17px] text-[var(--accent)] hover:underline">
+              Learn the game
               <svg viewBox="0 0 8 14" className="h-3.5 w-2 shrink-0" aria-hidden>
                 <path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

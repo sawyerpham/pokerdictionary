@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { rankLabel, suitOf, SUITS, type Card } from '../engine/cards';
-import { firstTime, flip, flyIn } from './motion';
+import { firstTime, flip, flyIn, pending } from './motion';
 
 const BOX = {
   lg: 'h-[4.6rem] w-[3.3rem] rounded-lg sm:h-24 sm:w-[4.25rem]',
@@ -39,25 +38,45 @@ export function PlayingCard({ card, size = 'md', dim }: { card?: Card; size?: ke
 }
 
 /**
- * Wraps a card so it flies in from the deck the first time `animKey` mounts (after `delay` ms), and
- * turns over when `faceUp` changes.
+ * A dealt card: it flies in from the deck face down the first time `animKey` mounts (after `delay` ms) and
+ * turns face up when it lands, as a real deal does. It also turns over whenever `faceUp` changes.
  */
-export function DealtCard({ animKey, delay = 0, faceUp = true, children }: { animKey: string; delay?: number; faceUp?: boolean; children: ReactNode }) {
+export function DealtCard({
+  animKey,
+  delay = 0,
+  card,
+  faceUp = true,
+  size = 'md',
+  dim,
+}: {
+  animKey: string;
+  delay?: number;
+  card: Card;
+  faceUp?: boolean;
+  size?: keyof typeof BOX;
+  dim?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
-  const wasFaceUp = useRef(faceUp);
+  const [flying, setFlying] = useState(() => pending(animKey));
+  const shown = faceUp && !flying;
+  const wasShown = useRef(shown);
+  const flight = useRef<Animation>(undefined); // survives StrictMode's second effect run
   useLayoutEffect(() => {
-    if (ref.current && firstTime(animKey)) flyIn(ref.current, '[data-deck]', { delay, rotate: -25, scale: 0.4 });
+    if (ref.current && firstTime(animKey)) flight.current = flyIn(ref.current, '[data-deck]', { delay, rotate: -25, scale: 0.4 });
+    const a = flight.current;
+    if (a && a.playState !== 'finished') a.onfinish = () => setFlying(false);
+    else setFlying(false);
     // Mount only: a card is dealt once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (wasFaceUp.current === faceUp) return;
-    wasFaceUp.current = faceUp;
+    if (wasShown.current === shown) return;
+    wasShown.current = shown;
     if (ref.current) flip(ref.current);
-  }, [faceUp]);
+  }, [shown]);
   return (
     <div ref={ref} className="shrink-0">
-      {children}
+      <PlayingCard card={shown ? card : undefined} size={size} dim={dim} />
     </div>
   );
 }

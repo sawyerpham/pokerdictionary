@@ -15,6 +15,8 @@ export const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion:
 
 // Keys already animated, so a hand isn't re-dealt when you come back to the tab.
 const seen = new Set<string>();
+/** Whether `key` is still due its first animation (doesn't mark it). */
+export const pending = (key: string) => enabled && !seen.has(key);
 export function firstTime(key: string) {
   if (seen.has(key)) return false;
   seen.add(key);
@@ -36,13 +38,10 @@ export function flyIn(
   if (!enabled || !el.animate) return;
   const src = typeof from === 'string' ? document.querySelector(from) : from;
   const delay = ms(opts.delay ?? 0);
-  if (reducedMotion() || !src) {
-    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay, easing: 'ease-out', fill: 'backwards' });
-    return;
-  }
+  if (reducedMotion() || !src) return el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay, easing: 'ease-out', fill: 'backwards' });
   const a = center(el);
   const b = center(src);
-  el.animate(
+  return el.animate(
     [
       { transform: `translate(${b.x - a.x}px, ${b.y - a.y}px) rotate(${opts.rotate ?? 0}deg) scale(${opts.scale ?? 0.6})`, opacity: 0.3 },
       { transform: 'none', opacity: 1 },
@@ -85,4 +84,15 @@ export function pop(el: HTMLElement) {
     duration: ms(420),
     easing: 'ease-out',
   });
+}
+
+/** A pile settling after chips land on it (or leave it). */
+export function bump(el: HTMLElement, grow: boolean) {
+  if (!enabled || !el.animate || reducedMotion()) return;
+  el.animate(
+    grow
+      ? [{ transform: 'scale(1)' }, { transform: 'scale(1.25) translateY(-2px)' }, { transform: 'scale(1)' }]
+      : [{ transform: 'none' }, { transform: 'translateY(2px) scaleY(0.9)' }, { transform: 'none' }],
+    { duration: ms(grow ? 380 : 220), easing: 'ease-out' },
+  );
 }
