@@ -1,10 +1,9 @@
 // Drives the table in real time: NPCs think, hands auto-deal, and each step waits for its animations.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { decide, nextTilt } from '../engine/bots';
 import { act, blankSeat, newTable, startHand, type Action, type Table } from '../engine/holdem';
-import { DEFAULT_LINEUP } from '../engine/profiles';
 import { ms, motionOn } from '../components/motion';
-import { findProfile, useSettings } from './settingsStore';
+import { findProfile, MAX_PLAYERS, useSettings } from './settingsStore';
 
 export type Mode = 'play' | 'spectate';
 export const YOU = 'you';
@@ -12,11 +11,15 @@ export const YOU = 'you';
 // Animation timings (ms at 1x); the table components use the same numbers.
 export const DEAL_STEP = 110;
 export const BOARD_STEP = 140;
+// Blinds go in before the cards: small blind, then big blind, then the deal starts.
+export const BLIND_STEP = 320;
+export const BLIND_LEAD = 2 * BLIND_STEP + 200;
 const ACTION_ANIM = 380;
 export const SWEEP_ANIM = 450;
 
 interface Session {
   mode: Mode;
+  started: boolean; // false while you're choosing players and buy-in
   table: Table;
   paused: boolean;
   busy: number; // ms of animation the last step started
@@ -24,6 +27,7 @@ interface Session {
   tilt: Record<string, number>; // keyed by `${seat}:${id}`
   net: Record<string, number>; // session result per seat, same keys
   youNet: number[]; // your result per hand
+  pending: Record<number, number>; // stack edits waiting for the next hand, by seat
 }
 
 // Survives tab switches, like the blackjack table.
@@ -39,7 +43,7 @@ export const boardDelay = (i: number, prevLen: number) => {
 
 function busyFor(before: Table, after: Table): number {
   if (!motionOn()) return 0;
-  if (after.handNo !== before.handNo) return after.seats.filter((s) => s.inHand).length * 2 * DEAL_STEP + 450;
+  if (after.handNo !== before.handNo) return BLIND_LEAD + after.seats.filter((s) => s.inHand).length * 2 * DEAL_STEP + 450;
   let b = ACTION_ANIM;
   if (after.board.length > before.board.length) b = Math.max(b, boardDelay(after.board.length - 1, before.board.length) + 450);
   if (after.street === 'done') b += SWEEP_ANIM + 700;
@@ -49,24 +53,21 @@ function busyFor(before: Table, after: Table): number {
 export function useTable() {
   const settings = useSettings((s) => s.settings);
   const custom = useSettings((s) => s.custom);
-  const lineup = useMemo(() => DEFAULT_LINEUP.map((d, i) => settings.lineup[i] ?? d), [settings.lineup]);
+  const opponents = useSettings((s) => s.opponents);
   const profile = useCallback((id: string) => findProfile(id, custom), [custom]);
 
   const seatIds = useCallback(
-    (mode: Mode) => (mode === 'play' ? [YOU, ...lineup.slice(0, settings.players - 1)] : lineup.slice(0, settings.players)),
-    [lineup, settings.players],
+    (mode: Mode) => (mode === 'play' ? [YOU, ...opponents.slice(0, MAX_PLAYERS - 1)] : opponents),
+    [opponents],
   );
-  const buyIn = useCallback(
-    (id: string) => (id === YOU ? settings.buyInBb : profile(id).buyInBb) * settings.bb,
-    [settings.buyInBb, settings.bb, profile],
-  );
+  const buyIn = useCallback(() => settings.buyInBb * settings.bb, [settings.buyInBb, settings.bb]);
 
   const fresh = useCallback(
     (mode: Mode, youNet: number[] = []): Session => {
       const ids = seatIds(mode);
       const table = newTable(ids, 0, settings.sb, settings.bb);
-      table.seats = ids.map((id) => blankSeat(id, buyIn(id)));
-      return { mode, table, paused: true, busy: 0, startStacks: [], tilt: {}, net: {}, youNet };
+      table.seats = ids.map((id) => blankSeat(id, buyIn()));
+      return { mode, started: false, table, paused: true, busy: 0, startStacks: [], tilt: {}, net: {}, youNet, pending: {} };
     },
     [seatIds, buyIn, settings.sb, settings.bb],
   );
@@ -80,16 +81,18 @@ export function useTable() {
   const sync = useCallback(
     (t: Table, mode: Mode): Table => {
       const ids = seatIds(mode);
-      const seats = ids.map((id, i) => (t.seats[i]?.id === id ? t.seats[i] : blankSeat(id, buyIn(id))));
+      const seats = ids.map((id, i) => (t.seats[i]?.id === id ? t.seats[i] : blankSeat(id, buyIn())));
       return { ...t, seats, sb: settings.sb, bb: settings.bb, button: Math.min(t.button, seats.length - 1) };
     },
     [seatIds, buyIn, settings.sb, settings.bb],
   );
 
   const between = s.table.street === 'done' || s.table.street === 'idle';
-  const configKey = `${seatIds(s.mode).join()}|${settings.sb}/${settings.bb}`;
+  const configKey = `${seatIds(s.mode).join()}|${settings.sb}/${settings.bb}|${settings.buyInBb}`;
   useEffect(() => {
-    if (between) setS((cur) => ({ ...cur, table: sync(cur.table, cur.mode) }));
+    // Before the game starts the table is rebuilt from scratch (new buy-ins); during it, seats change between hands.
+    if (!s.started) setS((cur) => fresh(cur.mode, cur.youNet));
+    else if (between) setS((cur) => ({ ...cur, table: sync(cur.table, cur.mode) }));
     // Only when the configuration changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey]);
@@ -117,18 +120,20 @@ export function useTable() {
   const nextHand = useCallback(() => {
     setS((cur) => {
       let t = sync(cur.table, cur.mode);
+      // Stack edits made during the last hand take effect now.
+      t = { ...t, seats: t.seats.map((seat, i) => (cur.pending[i] !== undefined ? { ...seat, stack: cur.pending[i], sittingOut: false } : seat)) };
       t = {
         ...t,
         seats: t.seats.map((seat) => {
           if (seat.id === YOU) return { ...seat, sittingOut: seat.stack === 0 };
           // NPCs rebuy when they can't cover a big blind.
-          return settings.autoRebuy && seat.stack < t.bb ? { ...seat, stack: buyIn(seat.id) } : seat;
+          return settings.autoRebuy && seat.stack < t.bb ? { ...seat, stack: buyIn() } : seat;
         }),
       };
       const startStacks = t.seats.map((x) => x.stack);
       const next = startHand(t);
-      if (next.street === 'idle') return { ...cur, table: next, paused: true };
-      return { ...step({ ...cur, startStacks }, next), startStacks };
+      if (next.street === 'idle') return { ...cur, table: next, paused: true, pending: {} };
+      return { ...step({ ...cur, startStacks, pending: {} }, next), startStacks };
     });
   }, [sync, step, settings.autoRebuy, buyIn]);
 
@@ -147,7 +152,7 @@ export function useTable() {
     } else if (t.toAct !== null && t.seats[t.toAct].id !== YOU) {
       const seat = t.toAct;
       const p = profile(t.seats[seat].id);
-      wait = s.busy + p.thinkMs * (0.5 + Math.random());
+      wait = s.busy + settings.npcThinkMs * (0.5 + Math.random());
       run = () =>
         setS((cur) => {
           if (cur.table !== t) return cur;
@@ -156,7 +161,7 @@ export function useTable() {
     } else return;
     const h = setTimeout(run, ms(wait));
     return () => clearTimeout(h);
-  }, [s, nextHand, profile, step]);
+  }, [s, nextHand, profile, step, settings.npcThinkMs]);
 
   const youAct = useCallback(
     (a: Action) =>
@@ -173,12 +178,23 @@ export function useTable() {
     profile,
     youAct,
     setPaused: (paused: boolean) => setS((cur) => ({ ...cur, paused })),
-    setMode: (mode: Mode) => setS((cur) => (cur.mode === mode ? cur : fresh(mode, cur.youNet))),
+    start: () => setS((cur) => ({ ...cur, started: true, paused: false })),
+    /** Back to choosing players, with fresh stacks. */
+    reset: () => setS((cur) => fresh(cur.mode, cur.youNet)),
+    setMode: (mode: Mode) => setS((cur) => (cur.mode === mode || cur.started ? cur : fresh(mode, cur.youNet))),
     rebuy: () =>
       setS((cur) => ({
         ...cur,
-        table: { ...cur.table, seats: cur.table.seats.map((x) => (x.id === YOU ? { ...x, stack: x.stack + buyIn(YOU), sittingOut: false } : x)) },
+        table: { ...cur.table, seats: cur.table.seats.map((x) => (x.id === YOU ? { ...x, stack: x.stack + buyIn(), sittingOut: false } : x)) },
       })),
+    /** Sets a seat's chips: right away between hands, otherwise when the next hand starts. */
+    setStack: (seat: number, amount: number) =>
+      setS((cur) => {
+        const t = cur.table;
+        if (t.street === 'idle' || t.street === 'done')
+          return { ...cur, table: { ...t, seats: t.seats.map((x, i) => (i === seat ? { ...x, stack: amount, sittingOut: false } : x)) } };
+        return { ...cur, pending: { ...cur.pending, [seat]: amount } };
+      }),
     resetProfit: () => setS((cur) => ({ ...cur, youNet: [] })),
   };
 }
