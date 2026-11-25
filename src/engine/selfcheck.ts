@@ -66,6 +66,9 @@ for (const [players, buyIn] of [[6, 20000], [9, 2000], [2, 50000], [4, 1000]]) {
   ok(sp && sp.exact, `chip split ${players}x${buyIn} not exact: ${JSON.stringify(sp)}`);
   ok(sp.perPlayer.every((n, i) => n * players <= set[i].count), 'chip split uses more chips than the set has');
 }
+// Cheapest-first: no green or black needed for $200 when $1s and $5s plus greens can make it.
+const strict = splitChips(set, 6, 20000, true)!;
+ok(strict.exact && strict.perPlayer.join() === '15,12,5,0', `cheapest-first split ${strict.perPlayer.join()}`);
 const odd = splitChips([{ name: 'Red', color: '#d00', count: 100, cents: 500 }], 4, 1200)!;
 ok(!odd.exact && odd.value === 1000, `inexact split should fall back to $10, got ${JSON.stringify(odd)}`);
 console.log('engine self-check passed');
