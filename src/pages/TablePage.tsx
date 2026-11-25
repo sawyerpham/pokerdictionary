@@ -9,7 +9,8 @@ import { ProfitTracker } from '../components/ProfitTracker';
 import { Segmented, Toggle } from '../components/RuleControls';
 import { bump, firstTime, flyIn, flyOut, ms, pop, setMotion } from '../components/motion';
 import { MAX_PLAYERS, STAKES, useSettings } from '../state/settingsStore';
-import { BotPicker } from '../components/BotPicker';
+import { BotPicker, cardOf } from '../components/BotPicker';
+import { LiveEvaluator } from '../components/LiveEvaluator';
 import { BLIND_LEAD, BLIND_STEP, boardDelay, DEAL_STEP, SWEEP_ANIM, useTable, YOU, type Mode } from '../state/useTable';
 
 // Seats sit on an ellipse, you at the bottom; action moves clockwise (to your left on screen).
@@ -18,6 +19,9 @@ const at = (i: number, n: number, r = 1) => {
   const a = ((90 + (i * 360) / n) * Math.PI) / 180;
   return { left: `calc(50% + var(--rx) * ${r * Math.cos(a)})`, top: `calc(50% + var(--ry) * ${r * Math.sin(a)})` };
 };
+
+/** Where a seat's bet sits. Seats at the bottom need their chips further in, clear of the tall cards there. */
+const betAt = (i: number, n: number) => at(i, n, Math.sin(((90 + (i * 360) / n) * Math.PI) / 180) > 0.7 ? 0.5 : 0.6);
 
 function Stat({ label, children, onClick, title }: { label: string; children: ReactNode; onClick?: () => void; title?: string }) {
   const Tag = onClick ? 'button' : 'div';
@@ -35,14 +39,14 @@ function Stat({ label, children, onClick, title }: { label: string; children: Re
 }
 
 const STEP_BTN =
-  'flex h-7 w-8 items-center justify-center rounded-[7px] bg-[var(--fill)] text-[17px] leading-none transition-colors active:bg-white/25 disabled:opacity-40';
+  'hit relative flex h-7 w-8 shrink-0 items-center justify-center rounded-[7px] bg-[var(--fill)] text-[17px] leading-none transition-colors active:bg-white/25 disabled:opacity-40';
 
 function Avatar({ p, you, size = 'md' }: { p?: Profile; you?: boolean; size?: 'md' | 'lg' }) {
   const emoji = p && !/^[A-Z0-9]{1,3}$/.test(p.avatar);
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-black/30 ${
-        size === 'lg' ? 'h-9 w-9 text-sm' : 'h-6 w-6 text-[10px] sm:h-8 sm:w-8 sm:text-[11px]'
+        size === 'lg' ? 'h-9 w-9 text-sm' : 'h-6 w-6 text-[11px] sm:h-8 sm:w-8 sm:text-[11px]'
       } ${emoji ? 'text-base' : ''}`}
       style={{ background: you ? 'var(--accent)' : emoji ? 'rgb(255 255 255 / 0.12)' : p?.color }}
     >
@@ -88,25 +92,28 @@ function HoleCards({
   dealDelay,
   size,
   dim,
+  reveal,
 }: {
   seat: SeatState;
+  /** Hand over: show the cards again even if they were folded away. */
+  reveal: boolean;
   faceUp: boolean;
   handKey: string;
   dealDelay: (pass: number) => number;
-  size: 'lg' | 'sm';
+  size: 'lg' | 'hero' | 'sm';
   dim: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [gone, setGone] = useState(seat.folded);
   useEffect(() => {
-    if (!seat.folded || gone || !ref.current) return;
+    if (!seat.folded || reveal || gone || !ref.current) return; // the fold that ends the hand stays up
     const a = flyOut(ref.current, '[data-pot]', { rotate: 120, duration: 450 });
     if (a) a.onfinish = () => setGone(true);
     else setGone(true);
-  }, [seat.folded, gone]);
-  if (gone || seat.hole.length === 0) return <div className={size === 'lg' ? 'h-[4.6rem] sm:h-24' : 'h-11 sm:h-14'} />;
+  }, [seat.folded, reveal, gone]);
+  if ((gone && !reveal) || seat.hole.length === 0) return <div key="empty" className={size === 'sm' ? 'h-11 sm:h-14' : 'h-[4.6rem] sm:h-24'} />;
   return (
-    <div ref={ref} className={`flex ${size === 'lg' ? '[&>*+*]:-ml-3' : '[&>*+*]:-ml-4 sm:[&>*+*]:-ml-5'}`}>
+    <div key={reveal && seat.folded ? 'shown' : 'cards'} ref={ref} className={`flex ${size === 'sm' ? '[&>*+*]:-ml-4 sm:[&>*+*]:-ml-5' : '[&>*+*]:-ml-3'}`}>
       {seat.hole.map((c, k) => (
         <div key={k} className={k ? 'rotate-[5deg]' : '-rotate-[4deg]'}>
           <DealtCard animKey={`${handKey}-${k}`} delay={dealDelay(k)} card={c} faceUp={faceUp} size={size} dim={dim} />
@@ -170,12 +177,13 @@ function Seat({
         faceUp={faceUp}
         handKey={`${t.handNo}-${i}`}
         dealDelay={(pass) => BLIND_LEAD + (pass * m + k) * DEAL_STEP}
-        size={you ? 'lg' : 'sm'}
-        dim={t.street === 'done' && t.showdown && !handResult && seat.inHand}
+        size={you ? (n > 6 ? 'hero' : 'lg') : 'sm'}
+        dim={(t.street === 'done' && t.showdown && !handResult && seat.inHand) || (t.street === 'done' && seat.folded)}
+        reveal={t.street === 'done' && !you}
       />
       <div
         data-seat={i}
-        className={`relative ${top ? '-mb-3' : '-mt-3'} flex max-w-full items-center gap-1.5 rounded-full bg-[rgb(28_28_30/0.95)] py-0.5 pr-2.5 pl-0.5 shadow-lg shadow-black/40 ring-1 transition-shadow ${
+        className={`relative ${top ? 'mb-1' : 'mt-1'} flex max-w-full items-center gap-1.5 rounded-full bg-[rgb(28_28_30/0.95)] py-0.5 pr-2.5 pl-0.5 shadow-lg shadow-black/40 ring-1 transition-shadow ${
           handResult
             ? 'ring-2 ring-amber-300 shadow-amber-300/30'
             : thinking
@@ -184,20 +192,20 @@ function Seat({
         }`}
       >
         <StackPile t={t} i={i} left={pileLeft} />
-        <button type="button" onClick={onMenu} aria-label={`${you ? 'Your' : `${p?.name}'s`} seat options`} className="absolute inset-0 rounded-full" />
+        <button type="button" onClick={onMenu} aria-label={`${you ? 'Your' : `${p?.name}'s`} seat options`} className="hit absolute inset-0 rounded-full" />
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
             aria-label={`Remove ${p?.name}`}
-            className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#48484a] text-[13px] leading-none text-white shadow ring-1 ring-black/40 hover:bg-rose-500"
+            className="hit absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#48484a] text-[13px] leading-none text-white shadow ring-1 ring-black/40 hover:bg-rose-500"
           >
             ×
           </button>
         )}
         <Avatar p={p} you={you} />
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[10px] text-white/70 sm:text-[11px]">
+          <p className="truncate text-[11px] text-white/70 sm:text-[11px]">
             {you ? 'You' : <><span className="sm:hidden">{shortName(p)}</span><span className="hidden sm:inline">{p?.name}</span></>}
           </p>
           <p className="text-[12px] font-semibold text-white tabular-nums sm:text-[13px]">{seat.sittingOut ? 'Out' : money(seat.stack)}</p>
@@ -205,14 +213,14 @@ function Seat({
       </div>
       <div className="relative mt-1 flex h-5 items-center justify-center gap-1">
         {position && (
-          <span className="rounded-[5px] bg-white/[0.14] px-1 text-[9px] leading-[15px] font-semibold tracking-wide text-white/80">{position}</span>
+          <span className="rounded-[5px] bg-white/[0.14] px-1 text-[11px] leading-[15px] font-semibold tracking-wide text-white/80">{position}</span>
         )}
         {allIn ? (
-          <span ref={badge} className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase shadow-lg shadow-rose-500/40">
+          <span ref={badge} className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold tracking-wider text-white uppercase shadow-lg shadow-rose-500/40">
             All in
           </span>
         ) : handResult ? (
-          <span ref={badge} className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap text-black tabular-nums">
+          <span ref={badge} className="rounded-full bg-amber-300 px-2 py-0.5 text-[11px] font-bold whitespace-nowrap text-black tabular-nums">
             +{money(handResult.won)}
           </span>
         ) : thinking ? (
@@ -223,14 +231,14 @@ function Seat({
           </span>
         ) : (
           bubble && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${la?.type === 'fold' ? 'text-white/40' : 'bg-white/10 text-white/85'}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${la?.type === 'fold' ? 'text-white/40' : 'bg-white/10 text-white/85'}`}>
               {bubble}
             </span>
           )
         )}
       </div>
       {t.street === 'done' && t.showdown && seat.inHand && (
-        <span className="text-[10px] whitespace-nowrap text-white/60">{describe(evaluate([...seat.hole, ...t.board]))}</span>
+        <span className="text-[11px] whitespace-nowrap text-white/60">{describe(evaluate([...seat.hole, ...t.board]))}</span>
       )}
     </div>
   );
@@ -286,6 +294,8 @@ function SeatMenu({
   i,
   name,
   pending,
+  color,
+  card,
   at: pos,
   onStack,
   onReplace,
@@ -295,6 +305,8 @@ function SeatMenu({
   i: number;
   name: string;
   pending?: number;
+  color: string;
+  card?: { rank: string; suit: string; ink: string };
   at: { left: string; top: string };
   onStack: (amount: number) => void;
   onReplace?: () => void;
@@ -322,37 +334,45 @@ function SeatMenu({
       ref={ref}
       role="dialog"
       aria-label={`${name}: seat options`}
-      className="absolute z-30 w-60 -translate-x-1/2 -translate-y-1/2 rounded-[14px] bg-[rgb(44_44_46/0.97)] p-3 shadow-2xl shadow-black/60 ring-1 ring-white/10 backdrop-blur-xl"
+      className="absolute z-30 w-60 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[16px] bg-[#f7f4ea] text-zinc-900 shadow-[0_12px_30px_rgb(0_0_0/0.6),inset_0_-4px_0_rgb(0_0_0/0.1)]"
       style={pos}
     >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-headline truncate">{name}</span>
-        <button type="button" onClick={onClose} aria-label="Close" className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-[15px]">
-          ×
+      <div className="flex items-center gap-2 px-3 py-2 text-white" style={{ background: `color-mix(in srgb, ${color} 75%, #111)` }}>
+        {card && (
+          <span className="rounded bg-[#f7f4ea] px-1 text-[13px] font-black" style={{ color: card.ink }}>
+            {card.rank}
+            {card.suit}
+          </span>
+        )}
+        <span className="flex-1 truncate text-[15px] font-black tracking-wide uppercase">{name}</span>
+        <button type="button" onClick={onClose} aria-label="Close" className="hit relative flex h-7 w-7 items-center justify-center rounded-full bg-black/35 text-[13px] font-black">
+          ✕
         </button>
       </div>
-      <div className="flex items-baseline justify-between text-[13px]">
-        <label htmlFor={`stack-${i}`} className="text-[var(--text-muted)]">
-          Chips
-        </label>
-        <span className="font-semibold tabular-nums">{money(value)}</span>
+      <div className="p-3">
+        <div className="flex items-baseline justify-between">
+          <label htmlFor={`stack-${i}`} className="text-[11px] font-black tracking-widest text-zinc-500 uppercase">
+            Chips
+          </label>
+          <span className="text-[20px] font-black tabular-nums">{money(value)}</span>
+        </div>
+        <input
+          id={`stack-${i}`}
+          type="range"
+          min={t.bb}
+          max={Math.max(500 * t.bb, value)}
+          step={t.bb}
+          value={value}
+          onChange={(e) => onStack(Number(e.target.value))}
+          className="w-full accent-zinc-900"
+        />
+        {midHand && <p className="text-[12px] text-zinc-500">Takes effect next hand.</p>}
+        {onReplace && (
+          <button type="button" onClick={onReplace} className="mt-2 min-h-11 w-full rounded-full bg-[var(--accent)] text-[13px] font-black text-white uppercase">
+            Replace Player
+          </button>
+        )}
       </div>
-      <input
-        id={`stack-${i}`}
-        type="range"
-        min={t.bb}
-        max={Math.max(500 * t.bb, value)}
-        step={t.bb}
-        value={value}
-        onChange={(e) => onStack(Number(e.target.value))}
-        className="w-full accent-[var(--accent)]"
-      />
-      {midHand && <p className="text-caption text-[var(--text-muted)]">Takes effect next hand.</p>}
-      {onReplace && (
-        <button type="button" onClick={onReplace} className="mt-2 min-h-10 w-full rounded-[10px] bg-[var(--fill)] text-[15px] font-semibold text-[var(--accent)] active:opacity-60">
-          Replace player
-        </button>
-      )}
     </div>
   );
 }
@@ -371,7 +391,7 @@ function BetSpot({ t, i, delay }: { t: Table; i: number; delay: number }) {
   }, [animKey, i, seat.bet, shove]);
   if (seat.bet <= 0) return null;
   return (
-    <div key={animKey} ref={ref} className="absolute z-[5] -translate-x-1/2 -translate-y-1/2" style={at(i, t.seats.length, 0.6)}>
+    <div key={animKey} ref={ref} className="absolute z-[5] -translate-x-1/2 -translate-y-1/2" style={betAt(i, t.seats.length)}>
       <ChipStack amount={seat.bet} />
     </div>
   );
@@ -460,7 +480,7 @@ function ActionBar({ t, onAct }: { t: Table; onAct: ReturnType<typeof useTable>[
 
   const btn =
     'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[17px] font-semibold transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-30';
-  const kbd = (k: string) => <kbd className="hidden rounded border border-white/20 px-1 text-[10px] opacity-60 sm:inline">{k}</kbd>;
+  const kbd = (k: string) => <kbd className="hidden rounded border border-white/20 px-1 text-[11px] opacity-60 sm:inline">{k}</kbd>;
   return (
     <div className="mx-auto mt-3 max-w-2xl space-y-2">
       {L.canRaise && (
@@ -476,7 +496,7 @@ function ActionBar({ t, onAct }: { t: Table; onAct: ReturnType<typeof useTable>[
               key={label}
               type="button"
               onClick={() => setTo(v as number)}
-              className={`min-h-8 rounded-[8px] px-2.5 text-[13px] font-medium transition-colors ${amount === v ? 'bg-[#636366] text-white' : 'bg-[var(--fill)] text-[var(--text-primary)]'}`}
+              className={`min-h-8 rounded-[8px] px-2.5 text-[13px] font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11 ${amount === v ? 'bg-[#636366] text-white' : 'bg-[var(--fill)] text-[var(--text-primary)]'}`}
             >
               {label}
             </button>
@@ -534,7 +554,7 @@ function EquityHint({ t, youIdx }: { t: Table; youIdx: number }) {
     <button
       type="button"
       onClick={() => setShown((v) => !v)}
-      className="rounded-md px-2 py-1 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
+      className="min-h-11 rounded-md px-2 py-1 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
       title="Click to show or hide"
     >
       Equity:{' '}
@@ -550,7 +570,7 @@ function HandLog({ t, name }: { t: Table; name: (i: number) => string }) {
   const lines = t.log.filter((e) => e.kind !== 'deal').slice(-14);
   return (
     <section className="rounded-[12px] bg-[var(--bg-second)] p-4">
-      <h2 className="text-caption mb-2 text-[var(--text-muted)]">Hand {t.handNo || '—'}</h2>
+      <h2 className="card-title">Hand {t.handNo || '—'}</h2>
       {lines.length === 0 ? (
         <p className="text-[15px] text-[var(--text-muted)]">No hand yet.</p>
       ) : (
@@ -570,7 +590,7 @@ function Leaderboard({ t, net, name }: { t: Table; net: Record<string, number>; 
   const rows = t.seats.map((s, i) => ({ i, name: name(i), stack: s.stack, net: net[`${i}:${s.id}`] ?? 0 })).sort((a, b) => b.net - a.net);
   return (
     <section className="rounded-[12px] bg-[var(--bg-second)] p-4">
-      <h2 className="text-caption mb-2 text-[var(--text-muted)]">Session results</h2>
+      <h2 className="card-title">Session results</h2>
       <table className="w-full text-[13px] tabular-nums">
         <tbody>
           {rows.map((r) => (
@@ -591,6 +611,7 @@ function Leaderboard({ t, net, name }: { t: Table; net: Record<string, number>; 
 
 export function TablePage() {
   const settings = useSettings((s) => s.settings);
+  const custom = useSettings((s) => s.custom);
   const update = useSettings((s) => s.update);
   setMotion(settings.animations, settings.speed);
   const { session, profile, youAct, setPaused, setMode, start, reset, rebuy, resetProfit, setStack } = useTable();
@@ -660,7 +681,7 @@ export function TablePage() {
     <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-6 sm:px-4 sm:py-8">
       {/* Table controls */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[12px] bg-[var(--bg-second)] p-1.5">
-        <div className="grid w-full grid-cols-3 sm:flex sm:w-auto">
+        <div className="flex w-full justify-between sm:w-auto sm:justify-start">
           {mode === 'play' && you && !setup && (
             <Stat label="Stack">
               {(you.stack === 0 && t.street === 'done') || you.sittingOut ? (
@@ -721,16 +742,16 @@ export function TablePage() {
               <button
                 type="button"
                 onClick={() => setPaused(!session.paused)}
-                className="min-h-9 min-w-20 rounded-[9px] bg-[var(--accent)] px-3 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
+                className="min-h-11 min-w-20 rounded-[9px] bg-[var(--accent)] px-3 text-[15px] font-semibold text-white transition hover:brightness-110 active:scale-[0.97]"
               >
                 {session.paused ? 'Resume' : 'Pause'}
               </button>
               <button
                 type="button"
                 onClick={reset}
-                className="min-h-9 rounded-[9px] bg-[var(--fill)] px-3 text-[15px] font-semibold text-rose-400 transition hover:brightness-125 active:scale-[0.97]"
+                className="min-h-11 rounded-[9px] bg-[var(--fill)] px-3 text-[15px] font-semibold text-rose-400 transition hover:brightness-125 active:scale-[0.97]"
               >
-                Reset game
+                Reset Game
               </button>
             </>
           )}
@@ -738,7 +759,8 @@ export function TablePage() {
       </div>
 
       {/* The table */}
-      <section aria-label="Poker table" className="relative mx-auto my-12 aspect-[4/5] w-full max-w-[560px] [--rx:40%] [--ry:43%] sm:aspect-[2/1] sm:max-w-none sm:[--rx:44%]">
+      <section aria-label="Poker table" className="relative mx-auto my-12 aspect-[3/5] w-full max-w-[560px] [--rx:40%] [--ry:43%] sm:aspect-[7/4] sm:min-h-[34rem] sm:max-w-none sm:[--rx:44%]">
+        <h2 className="card-title absolute -top-8 left-1">Table</h2>
         <div className="absolute inset-[9%_7%] rounded-[50%] border-[10px] border-[#1d1d1f] bg-[radial-gradient(ellipse_at_50%_40%,#16263f_0%,#0e1828_60%,#0a111d_100%)] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07),inset_0_10px_40px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.06),0_30px_60px_-30px_rgb(0_0_0/0.9)] sm:inset-[10%_7%] sm:border-[14px]">
           <div className="absolute inset-[7%] rounded-[50%] border border-white/[0.06]" />
         </div>
@@ -759,18 +781,18 @@ export function TablePage() {
             </span>
           </div>
           <Board t={t} />
-          <span className="text-[10px] tracking-[0.25em] text-white/25 uppercase">No-limit hold'em</span>
+          <span className="text-[11px] tracking-[0.25em] text-white/25 uppercase">No-limit hold'em</span>
         </div>
 
         {t.seats.map((_, i) => (
-          <span key={`a${i}`} data-bet={i} className="absolute" style={at(i, n, 0.6)} />
+          <span key={`a${i}`} data-bet={i} className="absolute" style={betAt(i, n)} />
         ))}
         {t.seats.map((_, i) => (
           <BetSpot key={`b${i}`} t={t} i={i} delay={t.seats[i].lastAction?.type === 'post' && positions.get(i) === 'BB' ? BLIND_STEP : 0} />
         ))}
         {t.street !== 'idle' && t.handNo > 0 && (
           <span
-            className="absolute z-[6] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[10px] font-bold text-black shadow-md shadow-black/50 transition-all duration-500"
+            className="absolute z-[6] flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[11px] font-bold text-black shadow-md shadow-black/50 transition-all duration-500"
             style={at(t.button + 0.5, n, 0.78)}
             aria-label="Dealer button"
           >
@@ -786,7 +808,7 @@ export function TablePage() {
             onMenu={() => setMenu(menu === i ? undefined : i)}
             onRemove={setup && s.id !== YOU && opponents.length > minOpponents ? () => unseat(i - offset) : undefined}
             p={s.id === YOU ? undefined : profile(s.id)}
-            faceUp={s.id === YOU || showAll || (t.street === 'done' && t.showdown && s.inHand)}
+            faceUp={s.id === YOU || showAll || t.street === 'done'}
             thinking={settled && t.toAct === i && s.id !== YOU && !session.paused}
             handResult={result(i)}
             dealOrder={dealOrder}
@@ -798,11 +820,15 @@ export function TablePage() {
             type="button"
             onClick={() => setPicking(opponents.length)}
             aria-label="Add a player"
-            className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 text-[var(--accent)] active:opacity-50"
+            className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--accent)] active:opacity-50"
             style={at(t.seats.length, slots)}
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-[var(--accent)]/70 bg-black/30 text-2xl leading-none">+</span>
-            <span className="text-[11px] font-medium">Add player</span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-[var(--accent)]/70 bg-black/30">
+              {/* Drawn, not a "+" glyph, so it sits dead centre. */}
+              <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+                <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </span>
           </button>
         )}
         {menu !== undefined && t.seats[menu] && (
@@ -811,6 +837,8 @@ export function TablePage() {
             t={t}
             i={menu}
             name={name(menu)}
+            color={t.seats[menu].id === YOU ? '#0a84ff' : profile(t.seats[menu].id).color}
+            card={t.seats[menu].id === YOU ? undefined : cardOf(profile(t.seats[menu].id), custom)}
             pending={session.pending[menu]}
             at={at(menu, slots, 0.55)}
             onStack={(v) => setStack(menu, v)}
@@ -851,7 +879,7 @@ export function TablePage() {
             onClick={start}
             className="flex min-h-[50px] min-w-[14rem] items-center justify-center rounded-[14px] bg-[var(--accent)] px-6 text-[17px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-40"
           >
-            Start game
+            Start Game
           </button>
           {t.seats.length < 2 && <p className="text-footnote text-[var(--text-muted)]">Spectating needs at least two players.</p>}
         </div>
@@ -864,6 +892,7 @@ export function TablePage() {
         <Leaderboard t={t} net={session.net} name={name} />
       </div>
       {mode === 'play' && <ProfitTracker rounds={session.youNet} onReset={resetProfit} />}
+      {mode === 'play' && <LiveEvaluator t={t} youIdx={youIdx} position={t.handNo > 0 ? positions.get(youIdx) : undefined} settled={settled} />}
       {picking !== undefined && <BotPicker key={picking} slot={picking} onClose={() => setPicking(undefined)} />}
     </main>
   );

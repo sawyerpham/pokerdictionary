@@ -9,9 +9,10 @@ const CAT = { blue: '#3987e5', orange: '#d95926', aqua: '#199e70', yellow: '#c98
 const INK = 'var(--text-primary)';
 const MUTED = 'var(--text-muted)';
 
-function Figure({ caption, children }: { caption: ReactNode; children: ReactNode }) {
+function Figure({ title, caption, children }: { title: string; caption: ReactNode; children: ReactNode }) {
   return (
     <figure className="mb-6 rounded-[12px] bg-[var(--bg-main)]/50 p-4 ring-1 ring-white/5">
+      <h3 className="card-title">{title}</h3>
       {children}
       <figcaption className="text-footnote mt-3 text-[var(--text-muted)]">{caption}</figcaption>
     </figure>
@@ -45,7 +46,7 @@ export function MiniCards({ cards }: { cards: string }) {
         return (
           <span
             key={i}
-            className={`inline-flex h-7 w-5 flex-col items-center justify-center rounded-[4px] bg-white text-[10px] leading-none font-semibold shadow-sm ${
+            className={`inline-flex h-7 w-5 flex-col items-center justify-center rounded-[4px] bg-white text-[11px] leading-none font-semibold shadow-sm ${
               suit === 'h' || suit === 'd' ? 'text-rose-600' : 'text-zinc-900'
             }`}
           >
@@ -73,9 +74,9 @@ const SEATS: Record<6 | 9, { name: string; group: keyof typeof GROUPS }[]> = {
   ],
 };
 // Spelled out under the seats whose abbreviations don't explain themselves.
-const FULL: Record<string, string> = { LJ: 'Lojack', HJ: 'Hijack', CO: 'Cutoff' };
+export const FULL: Record<string, string> = { LJ: 'Lojack', HJ: 'Hijack', CO: 'Cutoff' };
 
-const GROUPS = {
+export const GROUPS = {
   early: { label: 'Early', color: CAT.blue },
   middle: { label: 'Middle', color: CAT.orange },
   late: { label: 'Late', color: CAT.aqua },
@@ -85,36 +86,47 @@ const GROUPS = {
 /** The seats around a table, colored by position group, with the order they act before the flop. */
 export function TableDiagram({ initial = 9 }: { initial?: 6 | 9 }) {
   const [n, setN] = useState<6 | 9>(initial);
+  const [post, setPost] = useState(false);
   const seats = SEATS[n];
   const W = 360, H = 262, cx = W / 2, cy = 125;
   const at = (i: number, r = 1) => {
     const a = ((90 + (i * 360) / seats.length) * Math.PI) / 180;
     return { x: cx + 150 * r * Math.cos(a), y: cy + 98 * r * Math.sin(a) };
   };
-  // Preflop: UTG (index 3) acts first, round to the big blind.
-  const order = (i: number) => ((i - 3 + seats.length) % seats.length) + 1;
+  // Preflop UTG (index 3) acts first; after the flop the SB (index 1) does.
+  const order = (i: number) => ((i - (post ? 1 : 3) + seats.length) % seats.length) + 1;
+  const when = post ? 'after the flop' : 'preflop';
+  const toggle = (on: boolean) => `min-h-8 rounded-[8px] px-3 text-[13px] font-medium pointer-coarse:min-h-11 ${on ? 'bg-[#636366] text-white' : 'bg-[var(--fill)]'}`;
   const btn = at(0, 0.7);
   return (
-    <Figure
+    <Figure title="Seats and acting order"
       caption={
         <>
-          Seats clockwise from the button. The number is the order each seat acts before the flop. After the flop the SB acts
-          first and the BTN last.
+          Seats clockwise from the button. The number is the order each seat acts {post ? 'on the flop, turn and river' : 'before the flop'}.
         </>
       }
     >
-      <div className="mb-2 flex justify-center gap-1">
+      <div className="mb-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+        <div className="flex gap-1">
         {([9, 6] as const).map((k) => (
           <button
             key={k}
             type="button"
             onClick={() => setN(k)}
             aria-pressed={n === k}
-            className={`min-h-8 rounded-[8px] px-3 text-[13px] font-medium ${n === k ? 'bg-[#636366] text-white' : 'bg-[var(--fill)]'}`}
+            className={toggle(n === k)}
           >
             {k}-handed
           </button>
         ))}
+        </div>
+        <div className="flex gap-1">
+          {[false, true].map((v) => (
+            <button key={String(v)} type="button" onClick={() => setPost(v)} aria-pressed={post === v} className={toggle(post === v)}>
+              {v ? 'Postflop' : 'Preflop'}
+            </button>
+          ))}
+        </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block w-full max-w-[440px]" role="img" aria-label={`${n}-handed table: ${seats.map((s) => s.name).join(', ')}`}>
         <ellipse cx={cx} cy={cy} rx={124} ry={70} fill="#0e1828" stroke="#2c2c2e" strokeWidth={8} />
@@ -132,7 +144,7 @@ export function TableDiagram({ initial = 9 }: { initial?: 6 | 9 }) {
           const p = at(i);
           return (
             <g key={s.name}>
-              <title>{`${s.name}: ${GROUPS[s.group].label.toLowerCase()} position, acts ${order(i)} of ${seats.length} preflop`}</title>
+              <title>{`${s.name}: ${GROUPS[s.group].label.toLowerCase()} position, acts ${order(i)} of ${seats.length} ${when}`}</title>
               <circle cx={p.x} cy={p.y} r={25} fill={GROUPS[s.group].color} stroke="var(--bg-second)" strokeWidth={2} />
               <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={s.name.length > 3 ? 11 : 13} fontWeight={700} fill="#fff">
                 {s.name}
@@ -160,7 +172,7 @@ export function TableDiagram({ initial = 9 }: { initial?: 6 | 9 }) {
 /** A blind chip with its label on it. */
 function BlindChip({ label }: { label: 'SB' | 'BB' }) {
   return (
-    <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-dashed border-white/70 bg-[#d42a2a] text-[10px] font-bold text-white">
+    <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-dashed border-white/70 bg-[#d42a2a] text-[11px] font-bold text-white">
       {label}
     </span>
   );
@@ -209,8 +221,8 @@ export function HandFlow() {
     { name: 'Showdown', show: <span className="text-lg">🏆</span>, note: 'best five cards from your 2 plus the 5 shared' },
   ];
   return (
-    <Figure caption="The steps of a hand. The bright cards are the ones each street adds; the board keeps the earlier ones. One card is burned before each street.">
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+    <Figure title="Steps of a hand" caption="The steps of a hand. The bright cards are the ones each street adds; the board keeps the earlier ones. One card is burned before each street.">
+      <ol className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:grid-cols-3">
         {steps.map((s, i) => (
           <li key={s.name} className="flex flex-col items-center gap-1.5 rounded-[10px] bg-[var(--bg-second)] p-2 text-center">
             <span className="text-caption text-[var(--text-muted)] tabular-nums">{i + 1}</span>
@@ -285,7 +297,7 @@ export function TableAnatomy() {
     </g>
   );
   return (
-    <Figure caption="A four-player table after the river. Everyone has two private hole cards. The five board cards in the middle are shared, and each player makes their best five-card hand from their two plus the board.">
+    <Figure title="The table" caption="A four-player table after the river. Everyone has two private hole cards. The five board cards in the middle are shared, and each player makes their best five-card hand from their two plus the board.">
       <svg viewBox="0 0 480 330" className="mx-auto block w-full max-w-[560px]" role="img" aria-label="Poker table with hole cards, blinds, dealer button, and the flop, turn and river labelled">
         <ellipse cx={240} cy={160} rx={205} ry={118} fill="#0e1828" stroke="#2c2c2e" strokeWidth={10} />
         {board.map((c, i) => (
@@ -294,14 +306,14 @@ export function TableAnatomy() {
         {bracket(0, 2, 'FLOP')}
         {bracket(3, 3, 'TURN')}
         {bracket(4, 4, 'RIVER')}
-        <text x={240} y={by + 64} textAnchor="middle" fontSize={11} fill={MUTED}>
+        <text x={240} y={by + 64} textAnchor="middle" fontSize={11} fill={MUTED} className="max-sm:hidden">
           The board: shared by everyone
         </text>
 
         <SvgCard x={208} y={14} c="back" />
         <SvgCard x={242} y={14} c="back" />
         {pill(240, 70, 'UTG')}
-        <text x={282} y={34} fontSize={11} fill={MUTED}>
+        <text x={282} y={34} fontSize={11} fill={MUTED} className="max-sm:hidden">
           ← hole cards: two each, face down
         </text>
 
@@ -317,7 +329,7 @@ export function TableAnatomy() {
         <text x={376} y={164} textAnchor="middle" fontSize={10} fontWeight={700} fill="#000">
           D
         </text>
-        <text x={376} y={214} textAnchor="middle" fontSize={10} fill={MUTED}>
+        <text x={376} y={214} textAnchor="middle" fontSize={10} fill={MUTED} className="max-sm:hidden">
           dealer button
         </text>
 
@@ -325,7 +337,7 @@ export function TableAnatomy() {
         <SvgCard x={242} y={232} c="Ks" w={32} h={46} />
         {pill(240, 298, 'You · SB')}
         <SvgChip x={302} y={250} label="SB" />
-        <text x={198} y={262} textAnchor="end" fontSize={11} fill={MUTED}>
+        <text x={198} y={262} textAnchor="end" fontSize={11} fill={MUTED} className="max-sm:hidden">
           your hole cards: only you see them →
         </text>
       </svg>
@@ -344,7 +356,7 @@ export function SidePotDiagram() {
   ];
   const scale = 1.3, base = 150, colW = 56, gap = 40, left = 30;
   return (
-    <Figure caption="Each player matches the all-in amounts in layers. The bottom layer is the main pot, the layer above it a side pot that A can't win.">
+    <Figure title="Side pots" caption="Each player matches the all-in amounts in layers. The bottom layer is the main pot, the layer above it a side pot that A can't win.">
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
         <svg viewBox="0 0 290 190" className="w-full max-w-[320px]" role="img" aria-label="Side pot: main pot $150 from all three players, side pot $100 from B and C">
           <line x1={left - 10} x2={260} y1={base} y2={base} stroke="#3a3a3c" strokeWidth={1} />
@@ -410,7 +422,7 @@ export function expandRange(text: string): Set<string> {
   return out;
 }
 
-const RFI: { seat: string; range: string; color: string; ink: string }[] = [
+export const RFI: { seat: string; range: string; color: string; ink: string }[] = [
   { seat: 'UTG', color: '#9ec5f4', ink: '#0d366b', range: '55+, A2s+, K9s+, Q9s+, J9s+, T8s+, 98s, 87s, 76s, AJo+, KQo' },
   { seat: 'HJ', color: '#6da7ec', ink: '#0d366b', range: '44+, A2s+, K9s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, ATo+, KJo+, QJo' },
   { seat: 'CO', color: '#3987e5', ink: '#ffffff', range: '22+, A2s+, K8s+, Q8s+, J8s+, T8s+, 97s+, 86s+, 76s, 65s, 54s, ATo+, KTo+, QTo+, JTo' },
@@ -426,7 +438,7 @@ export function RangeGrid() {
   const first = (h: string) => RFI_SETS.findIndex((s) => s.has(h));
   const info = hover && (first(hover) >= 0 ? `${hover}: open from ${RFI[first(hover)].seat} and every later seat` : `${hover}: fold from every seat`);
   return (
-    <Figure caption="Suited hands above the diagonal, offsuit below, pairs on it. Each hand is shaded by the earliest seat that opens it. A hand opened from UTG is also opened from every seat after it.">
+    <Figure title="Opening ranges" caption="Suited hands above the diagonal, offsuit below, pairs on it. Each hand is shaded by the earliest seat that opens it. A hand opened from UTG is also opened from every seat after it.">
       <div className="mx-auto grid max-w-[420px] gap-px" style={{ gridTemplateColumns: 'repeat(13, minmax(0, 1fr))' }} onMouseLeave={() => setHover(undefined)}>
         {RANKS.split('').flatMap((_, i) =>
           RANKS.split('').map((__, j) => {
@@ -437,7 +449,7 @@ export function RangeGrid() {
                 key={h}
                 onMouseEnter={() => setHover(h)}
                 title={k >= 0 ? `${h}: opens from ${RFI[k].seat}` : `${h}: fold`}
-                className="flex aspect-square items-center justify-center rounded-[2px] text-[8px] font-semibold sm:text-[10px]"
+                className="flex aspect-square items-center justify-center rounded-[2px] text-[11px] font-semibold tracking-tighter"
                 style={{ background: k >= 0 ? RFI[k].color : '#2c2c2e', color: k >= 0 ? RFI[k].ink : 'rgb(235 235 245 / 0.35)' }}
               >
                 {h.slice(0, i === j ? 2 : 3)}
@@ -464,7 +476,7 @@ export function BluffChart() {
     ['2× pot', 2],
   ] as const;
   return (
-    <Figure caption="A bluff of bet B into pot P needs folds B ÷ (P + B) of the time. The rest, P ÷ (P + B), is how much of their range the caller has to keep. Exact values are in the table below.">
+    <Figure title="Bluff and defense" caption="A bluff of bet B into pot P needs folds B ÷ (P + B) of the time. The rest, P ÷ (P + B), is how much of their range the caller has to keep. Exact values are in the table below.">
       <div className="space-y-2">
         {sizes.map(([label, b]) => {
           const folds = b / (1 + b);
@@ -505,7 +517,7 @@ export function BluffChart() {
 
 export function PotOddsBar() {
   return (
-    <Figure caption="The example below: call $10 to win the $50 already in the pot. The call is 10 ÷ 60, about 17% of the final pot, so you need to win at least that often.">
+    <Figure title="Pot odds" caption="Example: call $10 to win the $50 already in the pot. The call is 10 ÷ 60, about 17% of the final pot, so you need to win at least that often.">
       <div className="flex h-8 gap-[2px] text-[12px] font-semibold text-white tabular-nums">
         <div className="flex items-center justify-center rounded-l-[4px]" style={{ width: `${(10 / 60) * 100}%`, background: CAT.orange }}>
           $10
@@ -526,13 +538,13 @@ export function PotOddsBar() {
 
 /* ------------------------------------------------------------ board texture */
 
-export function BoardTextures() {
+export function BoardTextures({ cite }: { cite?: ReactNode }) {
   const boards = [
     { cards: 'Ks 7d 2c', name: 'Dry', why: 'No flush or straight draws, little changes by the river.', size: 'Bet 25–35% of the pot' },
     { cards: '9h 8h 6s', name: 'Wet', why: 'Flush and straight draws everywhere; most turns change something.', size: 'Bet 55–80% of the pot' },
   ];
   return (
-    <Figure caption="Two flops at the extremes of board texture.">
+    <Figure title="Board texture" caption={<>How big to continuation bet on each kind of flop.{cite}</>}>
       <div className="grid gap-3 sm:grid-cols-2">
         {boards.map((b) => (
           <div key={b.name} className="rounded-[10px] bg-[var(--bg-second)] p-3">
@@ -564,7 +576,7 @@ export function PlayerTypes() {
     </text>
   );
   return (
-    <Figure caption="Each dot is one of the table's pro or celebrity players, placed by their sliders. Hover a dot for its name.">
+    <Figure title="Player styles" caption="Each dot is one of the table's pro or celebrity players, placed by their sliders. Hover a dot for its name.">
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block w-full max-w-[480px]" role="img" aria-label="Scatter of player styles by VPIP and aggression">
         <line x1={x(25)} x2={x(25)} y1={T} y2={H - B} stroke="#3a3a3c" />
         <line x1={L} x2={W - R} y1={y(50)} y2={y(50)} stroke="#3a3a3c" />

@@ -5,6 +5,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { TablePage } from './pages/TablePage';
 import { GuidesPage } from './pages/GuidesPage';
 import { ChipsPage } from './pages/ChipsPage';
+import { EvaluatorPage } from './pages/EvaluatorPage';
 
 function DeepDiveRedirect() {
   return <Navigate to={`/guides/${useParams().slug}`} replace />;
@@ -12,7 +13,7 @@ function DeepDiveRedirect() {
 
 function App() {
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden bg-[var(--bg-main)] text-[var(--text-primary)]">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-[var(--bg-main)] text-[var(--text-primary)]">
       <NavBar />
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -22,6 +23,7 @@ function App() {
         {/* Deep dives used to have their own page. */}
         <Route path="/deep-dives" element={<Navigate to="/guides/art-of-bluffing" replace />} />
         <Route path="/deep-dives/:slug" element={<DeepDiveRedirect />} />
+        <Route path="/evaluator" element={<EvaluatorPage />} />
         <Route path="/chips" element={<ChipsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>

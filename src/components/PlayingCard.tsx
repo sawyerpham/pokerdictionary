@@ -4,6 +4,8 @@ import { firstTime, flip, flyIn, pending } from './motion';
 
 const BOX = {
   lg: 'h-[4.6rem] w-[3.3rem] rounded-lg sm:h-24 sm:w-[4.25rem]',
+  // Your hand at a crowded table: small enough on phones to clear the seats beside you, full size from sm up.
+  hero: 'h-[3.2rem] w-[2.25rem] rounded-md sm:h-24 sm:w-[4.25rem] sm:rounded-lg',
   md: 'h-[3.6rem] w-[2.6rem] rounded-md sm:h-[4.6rem] sm:w-[3.3rem] sm:rounded-lg',
   sm: 'h-11 w-8 rounded-md sm:h-14 sm:w-10',
 };
@@ -28,7 +30,7 @@ export function PlayingCard({ card, size = 'md', dim }: { card?: Card; size?: ke
     >
       <div className="absolute top-0.5 left-1 flex flex-col items-center leading-none">
         <span className={size === 'sm' ? 'text-[11px] sm:text-[13px]' : 'text-[13px] sm:text-base'}>{label}</span>
-        <span className={size === 'sm' ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'}>{suit}</span>
+        <span className={size === 'sm' ? 'text-[11px] sm:text-xs' : 'text-xs sm:text-sm'}>{suit}</span>
       </div>
       {size !== 'sm' && (
         <span className="absolute inset-0 flex items-center justify-center pt-2 text-2xl sm:text-3xl">{suit}</span>

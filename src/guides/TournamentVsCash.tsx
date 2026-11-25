@@ -1,10 +1,9 @@
-import { Link } from 'react-router-dom';
 import type { Guide } from './registry';
 import { SRC } from './sources';
-import { Cite, GuideH2, GuideH3, GuideNote, GuideP, GuideTable, GuideUl, Sources } from './ui';
+import { Cite, GuideH2, GuideP, GuideTable, Sources } from './ui';
 
-const SOURCES = [SRC.cashGame, SRC.tournament, SRC.icm, SRC.upswingCashVsMtt, SRC.rake];
-const CASH = 1, TOURNEY = 2, ICM = 3, UPSWING = 4, RAKE = 5;
+const SOURCES = [SRC.cashGame, SRC.tournament, SRC.icm, SRC.rake];
+const CASH = 1, TOURNEY = 2, ICM = 3, RAKE = 4;
 
 // Wikipedia's ICM example: stacks 50% / 30% / 20%, prizes 70 / 30 / 0. Expected prize per player, worked out
 // with the model's rule (chance of 1st = chip share; the rest finish in proportion to what's left).
@@ -37,6 +36,7 @@ function IcmChart() {
   ];
   return (
     <figure className="mb-6 rounded-[12px] bg-[var(--bg-main)]/50 p-4 ring-1 ring-white/5">
+      <h3 className="card-title">Chips vs prize money</h3>
       <div className="space-y-3">
         {rows.map((r) => (
           <div key={r.name} className="flex items-center gap-3">
@@ -76,97 +76,33 @@ function IcmChart() {
 function Content() {
   return (
     <>
-      <GuideP>
-        The cards and betting rules are the same. What changes is what the chips are worth, which changes how you should play
-        them. The table on this site is a cash game.
-      </GuideP>
-
-      <GuideH2 id="the-difference">The difference in one table</GuideH2>
+      <GuideH2 id="the-difference">The difference</GuideH2>
       <GuideTable
         rows={[
           ['', 'Cash game', 'Tournament'],
-          ['Chips', 'Real money; a $1 chip is $1', 'Tournament chips with no cash value'],
-          ['Coming and going', 'Buy in, rebuy and leave between any two hands', 'Pay once at the start; play until you bust or win'],
-          ['Blinds', 'Stay the same all night', 'Go up on a schedule, by time or hands'],
-          ['How it ends', 'Whenever you get up', 'When one player has every chip'],
-          ['Prizes', 'Whatever is in front of you', 'Paid by finishing place, roughly the top 1 in 10'],
-          ['House fee', 'Rake from each pot, or seat time', 'Part of the buy-in, or a separate fee'],
+          ['Chips', 'Money', 'No cash value'],
+          ['Leaving', 'Between any two hands', 'When you bust'],
+          ['Blinds', 'Fixed', 'Rise on a schedule'],
+          ['Ends', 'When you get up', 'One player has every chip'],
+          ['Prizes', 'Your stack', 'By finishing place, about 1/10 paid'],
+          ['Fee', 'Rake or seat time', 'In the buy-in or separate'],
         ]}
       />
       <GuideP>
-        In cash games players can come and go between hands, and may not pocket part of their stack while staying seated.
-        <Cite n={CASH} /> In tournaments everyone pays a fixed buy-in for chips that have no value outside the event, the blinds
-        and antes rise as it goes, and players are ranked by the order they're knocked out.<Cite n={TOURNEY} /> Cardrooms take
-        cash games' fee as rake, usually 2.5% to 10% of each pot up to a cap.<Cite n={RAKE} />
+        Cash players may not pocket part of their stack while seated.<Cite n={CASH} /> Tournament places are set by the order of
+        knockouts.<Cite n={TOURNEY} /> Rake is usually 2.5% to 10% of a pot, up to a cap.<Cite n={RAKE} />
       </GuideP>
 
-      <GuideH2 id="cash-strategy">Playing cash games</GuideH2>
-      <GuideUl>
-        <li>
-          <strong>Every chip is worth the same.</strong> Winning $100 is exactly as good as losing $100 is bad, so the only question
-          on every decision is whether it wins money on average.
-        </li>
-        <li>
-          <strong>Stacks stay deep.</strong> With blinds that never rise and the option to top up, 100 big blinds or more is
-          normal, so play after the flop matters most.<Cite n={UPSWING} />
-        </li>
-        <li>
-          <strong>Choose your table.</strong> You can leave between any two hands, so leave tough games and sit with weaker
-          players.<Cite n={CASH} />
-        </li>
-        <li>
-          <strong>Beat the rake too.</strong> At low stakes the rake is a large cost, and a winning strategy has to account for it.
-          <Cite n={[UPSWING, RAKE]} />
-        </li>
-      </GuideUl>
-
-      <GuideH2 id="tournament-strategy">Playing tournaments</GuideH2>
-      <GuideH3>Stacks get shorter</GuideH3>
+      <GuideH2 id="icm">Tournament chip value (ICM)</GuideH2>
       <GuideP>
-        Because the blinds keep rising, a stack that started at 100 big blinds can be 20 a few hours later without losing a
-        hand.<Cite n={TOURNEY} /> Shorter stacks leave less room to bet and then fold, so more decisions become all in or fold.
-        The{' '}
-        <Link to="/guides/bet-sizing" className="text-[var(--accent)] hover:underline">
-          bet sizing guide
-        </Link>{' '}
-        covers stack-to-pot ratio.
-      </GuideP>
-      <GuideH3>Survival has value: ICM</GuideH3>
-      <GuideP>
-        Prize money isn't proportional to chips. The <strong>Independent Chip Model</strong> estimates each player's share of the
-        prizes from the stacks alone. Each player's chance of finishing first equals their share of the chips, and the remaining
-        places follow the same rule among the rest.<Cite n={ICM} /> Players use it to make decisions near the money and to
-        split prizes in final-table deals.<Cite n={ICM} />
+        The Independent Chip Model estimates each player's share of the prizes: the chance of finishing first equals their share
+        of the chips, and the other places follow the same rule.<Cite n={ICM} />
       </GuideP>
       <IcmChart />
       <GuideP>
-        Using the same example, if A wins 10% of the chips from C, A's prize share rises from {f1(BASE[0])} to {f1(WIN[0])}, a gain
-        of {f1(WIN[0] - BASE[0])}. If A loses 10% to C, it drops to {f1(LOSE[0])}, a loss of {f1(BASE[0] - LOSE[0])}. Chips you lose
-        cost more than the same chips gain you.<Cite n={ICM} /> That's why, near a pay jump, a call that would be fine in a cash game
-        can be a mistake: you need a stronger hand to risk your tournament.
+        If A wins 10% of the chips from C, A's prize share goes from {f1(BASE[0])} to {f1(WIN[0])}. Losing 10% takes it to{' '}
+        {f1(LOSE[0])}. Chips lost cost more than chips won, so take fewer close all-ins near pay jumps.<Cite n={ICM} />
       </GuideP>
-      <GuideH3>Bigger swings</GuideH3>
-      <GuideP>
-        Only about one player in ten gets paid, and the top three usually win more than everyone else in the money put together.
-        <Cite n={TOURNEY} /> That makes results swing far more than in cash games. Tournament regulars have losing months, even
-        losing years, and need a bigger bankroll.<Cite n={UPSWING} />
-      </GuideP>
-
-      <GuideH2 id="which-to-play">Which to play</GuideH2>
-      <GuideUl>
-        <li>
-          <strong>Cash games</strong> suit steady, analytical play with smaller swings and the freedom to stop any time.
-          <Cite n={UPSWING} />
-        </li>
-        <li>
-          <strong>Tournaments</strong> offer big wins from a small buy-in and fields full of recreational players, at the cost of
-          long sessions and big swings.<Cite n={UPSWING} />
-        </li>
-      </GuideUl>
-      <GuideNote>
-        Practising here: the table is a cash game. To get a feel for short-stack tournament spots, lower your buy-in in the top bar
-        (20 to 40 big blinds) and see how much simpler and riskier every decision gets.
-      </GuideNote>
 
       <Sources list={SOURCES} />
     </>
@@ -176,12 +112,10 @@ function Content() {
 export const tournamentGuide: Guide = {
   slug: 'tournament-vs-cash',
   title: 'Tournaments vs Cash Games',
-  description: 'What changes when chips stop being money: rising blinds, shorter stacks, ICM, payouts and swings.',
+  description: 'What differs, and what tournament chips are worth.',
   sections: [
     { id: 'the-difference', title: 'The difference' },
-    { id: 'cash-strategy', title: 'Playing cash games' },
-    { id: 'tournament-strategy', title: 'Playing tournaments' },
-    { id: 'which-to-play', title: 'Which to play' },
+    { id: 'icm', title: 'ICM' },
     { id: 'sources', title: 'Sources' },
   ],
   Content,

@@ -61,7 +61,7 @@ const dollars = (cents: number) => (cents % 100 ? `$${(cents / 100).toFixed(2)}`
 const toCents = (s: string) => Math.round(parseFloat(s.replace(/[$,\s]/g, '')) * 100) || 0;
 const toInt = (s: string) => Math.max(0, Math.floor(Number(s.replace(/[,\s]/g, ''))) || 0);
 
-const STEP = 'flex h-7 w-8 items-center justify-center rounded-[8px] bg-[var(--fill)] text-[19px] leading-none active:bg-white/25 disabled:opacity-40';
+const STEP = 'hit relative flex h-7 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--fill)] text-[19px] leading-none active:bg-white/25 disabled:opacity-40';
 const INPUT = 'w-full min-w-0 rounded-[8px] bg-[var(--bg-main)] px-2 py-1 text-[15px] tabular-nums outline-none ring-1 ring-[var(--line)] focus:ring-[var(--accent)]';
 
 /** A side-view stack of `n` chips in `color`, drawn in the chip design from Settings. */
@@ -108,6 +108,7 @@ export function ChipsPage() {
       <div className="grid items-start gap-4 lg:grid-cols-[1fr_24rem]">
         {/* Inputs */}
         <section className="rounded-[12px] bg-[var(--bg-second)] p-3 sm:p-4">
+          <h2 className="card-title">Your game</h2>
           <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-b border-[var(--line)] pb-3">
             <div className="flex items-center gap-2">
               <span className="text-[15px]">Players</span>
@@ -158,7 +159,7 @@ export function ChipsPage() {
                   type="button"
                   aria-label={`Remove ${c.name}`}
                   onClick={() => setS({ ...s, colors: s.colors.filter((_, k) => k !== i) })}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-[19px] text-[var(--text-muted)] hover:text-rose-400"
+                  className="hit relative flex h-7 w-7 items-center justify-center rounded-full text-[19px] text-[var(--text-muted)] hover:text-rose-400"
                 >
                   ×
                 </button>
@@ -170,11 +171,11 @@ export function ChipsPage() {
               type="button"
               disabled={!unused.length}
               onClick={() => setS({ ...s, colors: [...s.colors, { name: unused[0].name, count: '25', value: '500' }] })}
-              className="min-h-10 text-[15px] text-[var(--accent)] disabled:text-[var(--text-muted)]"
+              className="min-h-11 text-[15px] text-[var(--accent)] disabled:text-[var(--text-muted)]"
             >
-              Add color
+              Add Color
             </button>
-            <button type="button" onClick={() => setS(DEFAULT)} className="min-h-10 text-[15px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+            <button type="button" onClick={() => setS(DEFAULT)} className="min-h-11 text-[15px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
               Reset
             </button>
           </div>
@@ -182,7 +183,7 @@ export function ChipsPage() {
 
         {/* Result */}
         <section aria-live="polite" className="rounded-[12px] bg-[var(--bg-second)] p-4 lg:sticky lg:top-20">
-          <h2 className="text-caption mb-3 text-[var(--text-muted)] uppercase">Each player gets</h2>
+          <h2 className="card-title">Each player gets</h2>
           {!split ? (
             <p className="py-6 text-center text-[15px] text-[var(--text-muted)]">
               {buyIn <= 0 ? 'Enter a buy-in.' : 'Not enough chips for this many players.'}

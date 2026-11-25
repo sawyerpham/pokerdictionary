@@ -52,7 +52,7 @@ export function ProfitTracker({ rounds, onReset }: { rounds: number[]; onReset: 
     <section aria-label="Profit tracker" className="mt-6 rounded-[12px] bg-[var(--bg-second)] p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-caption text-[var(--text-muted)]">Session profit</h2>
+          <h2 className="card-title mb-0">Session profit</h2>
           <p
             className={`tabular-nums text-3xl font-semibold ${
               net > 0 ? 'text-emerald-400' : net < 0 ? 'text-rose-400' : ''
@@ -67,7 +67,7 @@ export function ProfitTracker({ rounds, onReset }: { rounds: number[]; onReset: 
           disabled={!rounds.length}
           className="min-h-11 px-2 text-[15px] text-[var(--accent)] active:opacity-50 disabled:text-[var(--text-muted)] disabled:opacity-60"
         >
-          Reset tracker
+          Reset Tracker
         </button>
       </div>
 
@@ -77,7 +77,7 @@ export function ProfitTracker({ rounds, onReset }: { rounds: number[]; onReset: 
         </p>
       ) : (
         <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex flex-col justify-between py-1 tabular-nums text-[10px] text-[var(--text-muted)]">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex flex-col justify-between py-1 tabular-nums text-[11px] text-[var(--text-muted)]">
             <span>{money(max, true)}</span>
             <span>{money(min, true)}</span>
           </div>

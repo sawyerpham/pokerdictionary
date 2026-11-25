@@ -82,7 +82,7 @@ export function SettingsPage() {
                   aria-label={`$${d} chip color`}
                   value={s.chipColors[d]}
                   onChange={(e) => update({ chipColors: { ...s.chipColors, [d]: e.target.value } })}
-                  className="h-7 w-12 cursor-pointer rounded bg-transparent"
+                  className="h-7 w-12 cursor-pointer rounded bg-transparent pointer-coarse:h-11"
                 />
               </label>
             </Row>

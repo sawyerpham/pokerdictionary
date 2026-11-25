@@ -20,7 +20,7 @@ export function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-40 ${
+      className={`hit relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-40 ${
         checked ? 'bg-[var(--accent)]' : 'bg-[rgb(120_120_128/0.32)]'
       }`}
     >
@@ -61,7 +61,7 @@ export function Segmented<T extends string | number>({
           aria-checked={value === o.value}
           disabled={disabled}
           onClick={() => onChange(o.value)}
-          className={`min-h-7 min-w-8 rounded-[7px] px-2 text-[13px] font-medium transition-colors ${
+          className={`min-h-8 min-w-8 rounded-[7px] px-2 text-[13px] font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11 ${
             value === o.value
               ? 'bg-[#636366] text-white shadow-[0_3px_8px_rgb(0_0_0/0.12),0_3px_1px_rgb(0_0_0/0.04)]'
               : 'text-[var(--text-primary)] hover:bg-white/[0.06]'

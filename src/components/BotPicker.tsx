@@ -1,50 +1,103 @@
-// Choosing an opponent, chess.com "Play Bots" style: big cards grouped Pros / Entertainers / Archetypes with
-// their style and description. A tap seats the player. Random makes a new player; Custom opens the
+// Choosing an opponent as picking a card: each player is a playing-card style trading card with a rank and
+// suit, portrait, name banner and stat bars. A tap seats them. Random is a face-down card; Custom opens the
 // sliders, and custom players are the only ones you can edit.
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { blankProfile, KNOBS, PRESETS, type Profile } from '../engine/profiles';
 import { findProfile, useSettings } from '../state/settingsStore';
-import { Group, Row } from './RuleControls';
 
 const isEmoji = (a: string) => !/^[A-Z0-9]{1,3}$/.test(a);
+/** "NPC 3" -> "N3", "Lucky Lou" -> "LL". */
+const initials = (name: string) =>
+  (name.match(/[A-Za-z0-9]+/g) ?? ['?']).map((w, _i, all) => (all.length === 1 ? w.slice(0, 2) : /^\d+$/.test(w) ? w : w[0])).join('').toUpperCase().slice(0, 3);
 
-export function Avatar({ p, size = 32 }: { p: Profile; size?: number }) {
+const SUIT_OF: Record<Profile['group'], string> = { Pros: '♠', Entertainers: '♥', Archetypes: '♦', Custom: '♣' };
+const RANK_ORDER = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
+/** Every player keeps one card: the suit is their group, the rank their place in it. */
+export function cardOf(p: Profile, custom: Profile[] = []) {
+  const list = p.group === 'Custom' ? custom.filter((c) => c.group === 'Custom') : PRESETS.filter((x) => x.group === p.group);
+  const i = Math.max(0, list.findIndex((x) => x.id === p.id));
+  const suit = SUIT_OF[p.group];
+  return { rank: RANK_ORDER[i % RANK_ORDER.length], suit, ink: suit === '♥' || suit === '♦' ? '#c81e4a' : '#18181b' };
+}
+
+const STATS: [string, 'vpip' | 'pfr' | 'aggression' | 'bluff'][] = [
+  ['VPIP', 'vpip'],
+  ['PFR', 'pfr'],
+  ['AGG', 'aggression'],
+  ['BLUFF', 'bluff'],
+];
+
+function Portrait({ p, size }: { p: Profile; size: number }) {
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{
-        width: size,
-        height: size,
-        fontSize: isEmoji(p.avatar) ? size * 0.5 : size * 0.36,
-        background: isEmoji(p.avatar) ? 'rgb(255 255 255 / 0.12)' : p.color,
-      }}
+      className="flex shrink-0 items-center justify-center rounded-full font-black text-white shadow-[0_3px_8px_rgb(0_0_0/0.35)] ring-4 ring-white"
+      style={{ width: size, height: size, fontSize: isEmoji(p.avatar) ? size * 0.5 : size * 0.36, background: isEmoji(p.avatar) ? '#e4e0d4' : p.color }}
     >
       {p.avatar}
     </span>
   );
 }
 
-/** "NPC 3" -> "N3", "Lucky Lou" -> "LL". */
-const initials = (name: string) =>
-  (name.match(/[A-Za-z0-9]+/g) ?? ['?']).map((w, _i, all) => (all.length === 1 ? w.slice(0, 2) : /^\d+$/.test(w) ? w : w[0])).join('').toUpperCase().slice(0, 3);
+/** The corner index of a playing card. */
+function Corner({ rank, suit, ink, flip }: { rank: string; suit: string; ink: string; flip?: boolean }) {
+  return (
+    <span className={`absolute flex flex-col items-center leading-none font-black ${flip ? 'right-2 bottom-2 rotate-180' : 'top-2 left-2'}`} style={{ color: ink }} aria-hidden>
+      <span className="text-[17px]">{rank}</span>
+      <span className="text-[15px]">{suit}</span>
+    </span>
+  );
+}
 
-const styleLine = (p: Profile) => `VPIP ${p.vpip} · PFR ${p.pfr} · Agg ${p.aggression} · Bluff ${p.bluff}`;
+const FACE =
+  'relative flex h-full min-h-64 w-full flex-col items-center rounded-[16px] bg-[#f7f4ea] px-3 pt-3 pb-9 text-center text-zinc-900 shadow-[0_6px_14px_rgb(0_0_0/0.45),inset_0_-4px_0_rgb(0_0_0/0.08)]';
+const DEALT = 'transition-transform duration-150 hover:-translate-y-1.5 hover:-rotate-1 active:translate-y-0 motion-reduce:transform-none';
 
-/** A modal sheet: native <dialog> for focus trapping and Esc. */
-function Sheet({
-  title,
-  onClose,
-  action,
-  wide,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  action?: { label: string; run: () => void };
-  wide?: boolean;
-  children: ReactNode;
-}) {
+function PlayerCard({ p, custom, seated, onPick, onEdit }: { p: Profile; custom: Profile[]; seated: boolean; onPick: () => void; onEdit?: () => void }) {
+  const c = cardOf(p, custom);
+  return (
+    <div className="relative">
+      <button type="button" disabled={seated} onClick={onPick} className={`${FACE} ${seated ? 'cursor-not-allowed opacity-45 grayscale' : DEALT}`}>
+        <Corner {...c} />
+        <Corner {...c} flip />
+        <span className="mt-3">
+          <Portrait p={p} size={64} />
+        </span>
+        <span
+          className="-mx-3 mt-2 block self-stretch py-1 text-[13px] leading-tight font-black tracking-wide text-white uppercase [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]"
+          style={{ background: `color-mix(in srgb, ${p.color} 75%, #111)` }}
+        >
+          {p.name}
+        </span>
+        <span className="mt-1.5 line-clamp-3 min-h-[3.1rem] text-[12px] leading-tight text-zinc-600">{p.blurb}</span>
+        <span className="mt-auto w-full space-y-0.5 px-3">
+          {STATS.map(([label, key]) => (
+            <span key={key} className="flex items-center gap-1.5 text-[11px] font-bold">
+              <span className="w-10 text-left text-zinc-500">{label}</span>
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
+                <span className="block h-full rounded-full" style={{ width: `${p[key]}%`, background: c.ink }} />
+              </span>
+              <span className="w-5 text-right tabular-nums">{p[key]}</span>
+            </span>
+          ))}
+        </span>
+        {seated && (
+          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 rounded-md border-4 border-zinc-900 bg-[#f7f4ea] px-3 py-1 text-[17px] font-black tracking-widest">
+            SEATED
+          </span>
+        )}
+      </button>
+      {onEdit && (
+        <button type="button" onClick={onEdit} className="hit absolute top-2 right-2 rounded-full bg-zinc-900 px-2.5 py-0.5 text-[12px] font-bold text-white">
+          Edit
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A modal sheet on dark felt: native <dialog> for focus trapping and Esc. */
+function Sheet({ title, onClose, action, wide, children }: { title: string; onClose: () => void; action?: { label: string; run: () => void }; wide?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     ref.current?.showModal();
@@ -53,21 +106,21 @@ function Sheet({
     <dialog
       ref={ref}
       onClose={onClose}
-      className={`no-scrollbar m-auto max-h-[92vh] overflow-y-auto rounded-[14px] bg-[var(--bg-main)] p-0 text-[var(--text-primary)] backdrop:bg-black/60 backdrop:backdrop-blur-sm ${
-        wide ? 'w-[min(64rem,calc(100%-1.5rem))]' : 'w-[min(40rem,calc(100%-1.5rem))]'
+      className={`no-scrollbar m-auto max-h-[92vh] overflow-y-auto rounded-[22px] border-[6px] border-[#2b2118] bg-[radial-gradient(ellipse_at_50%_0%,#16263f_0%,#0b1220_70%)] p-0 text-[var(--text-primary)] shadow-[0_0_0_2px_rgb(255_255_255/0.08),0_30px_80px_rgb(0_0_0/0.7)] backdrop:bg-black/70 ${
+        wide ? 'w-[min(68rem,calc(100%-1rem))]' : 'w-[min(40rem,calc(100%-1rem))]'
       }`}
     >
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--line)] bg-[rgb(22_22_24/0.8)] px-4 py-2 backdrop-blur-xl">
-        <button type="button" onClick={() => ref.current?.close()} className="min-h-11 min-w-16 text-left text-[17px] text-[var(--accent)]">
-          Cancel
-        </button>
-        <span className="text-headline">{title}</span>
-        <span className="min-w-16 text-right">
+      <div className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-[#0e1828] px-4 py-3 shadow-[0_4px_12px_rgb(0_0_0/0.35)]">
+        <span className="text-[20px] font-black tracking-wide uppercase">{title}</span>
+        <span className="flex items-center gap-2">
           {action && (
-            <button type="button" onClick={action.run} className="min-h-11 text-[17px] font-semibold text-[var(--accent)]">
+            <button type="button" onClick={action.run} className="min-h-11 rounded-full bg-[var(--accent)] px-5 text-[15px] font-black uppercase">
               {action.label}
             </button>
           )}
+          <button type="button" onClick={() => ref.current?.close()} aria-label="Cancel" className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--fill)] text-[20px] font-black">
+            ✕
+          </button>
         </span>
       </div>
       {children}
@@ -75,19 +128,19 @@ function Sheet({
   );
 }
 
-/** Every slider of a custom player, with what each one means. `onDone` gets the saved player. */
+/** Every slider of a custom player, laid out on their card. `onDone` gets the saved player. */
 function Editor({ draft, isNew, onDone, onCancel }: { draft: Profile; isNew: boolean; onDone: (p: Profile) => void; onCancel: () => void }) {
   const [p, setP] = useState(draft);
   const save = useSettings((s) => s.saveProfile);
   const remove = useSettings((s) => s.deleteProfile);
+  const custom = useSettings((s) => s.custom);
   const set = (patch: Partial<Profile>) => setP((cur) => ({ ...cur, ...patch, pfr: Math.min(patch.pfr ?? cur.pfr, patch.vpip ?? cur.vpip) }));
-  const randomize = () =>
-    set(Object.fromEntries(KNOBS.map((k) => [k.key, Math.round((k.min + Math.random() * (k.max - k.min)) / k.step) * k.step])));
-  const textInput = 'min-w-0 flex-1 rounded-[8px] bg-[var(--bg-second)] px-2.5 py-1.5 text-[17px] outline-none ring-1 ring-[var(--line)] focus:ring-[var(--accent)]';
+  const randomize = () => set(Object.fromEntries(KNOBS.map((k) => [k.key, Math.round((k.min + Math.random() * (k.max - k.min)) / k.step) * k.step])));
+  const c = cardOf({ ...p, group: 'Custom' }, custom);
 
   return (
     <Sheet
-      title={isNew ? 'Custom player' : 'Edit player'}
+      title={isNew ? 'Build a player' : 'Edit player'}
       onClose={onCancel}
       action={{
         label: isNew ? 'Add' : 'Done',
@@ -98,56 +151,43 @@ function Editor({ draft, isNew, onDone, onCancel }: { draft: Profile; isNew: boo
         },
       }}
     >
-      <div className="space-y-6 p-4">
-        <div className="flex items-center gap-3">
-          <Avatar p={p} size={56} />
-          <div className="min-w-0 flex-1">
-            <p className="text-title-2 truncate">{p.name || 'Unnamed'}</p>
-            <p className="text-footnote text-[var(--text-muted)] tabular-nums">{styleLine(p)}</p>
-          </div>
-        </div>
-        <Group title="Name">
-          <Row title="Name">
+      <div className="p-4">
+        <div className="relative rounded-[16px] bg-[#f7f4ea] px-5 pt-5 pb-6 text-zinc-900 shadow-[0_6px_14px_rgb(0_0_0/0.45)]">
+          <Corner {...c} />
+          <div className="flex flex-col items-center gap-2">
+            <Portrait p={p} size={72} />
             <input
               aria-label="Name"
               value={p.name}
               maxLength={24}
               onChange={(e) => set({ name: e.target.value, avatar: initials(e.target.value) })}
-              className={textInput}
+              className="w-full max-w-xs rounded-md border-2 border-zinc-900 bg-white px-3 py-1.5 text-center text-[17px] font-black uppercase"
             />
-          </Row>
-        </Group>
-        {[...new Set(KNOBS.map((k) => k.group))].map((g) => (
-          <Group key={g} title={g}>
-            {KNOBS.filter((k) => k.group === g).map((k) => (
-              <div key={k.key} className="px-4 py-2.5 [&+&]:border-t [&+&]:border-[var(--line)]">
-                <div className="flex items-baseline justify-between">
-                  <label htmlFor={k.key} className="text-[15px]">
-                    {k.label}
-                  </label>
-                  <span className="text-[15px] text-[var(--text-muted)] tabular-nums">
-                    {p[k.key]}
-                    {k.unit ? ` ${k.unit}` : ''}
-                  </span>
+          </div>
+          {[...new Set(KNOBS.map((k) => k.group))].map((g) => (
+            <fieldset key={g} className="mt-5">
+              <legend className="mb-1 w-full border-b-2 border-zinc-900 text-[13px] font-black tracking-widest uppercase">{g}</legend>
+              {KNOBS.filter((k) => k.group === g).map((k) => (
+                <div key={k.key} className="py-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <label htmlFor={k.key} className="text-[15px] font-bold">
+                      {k.label}
+                    </label>
+                    <span className="text-[17px] font-black tabular-nums" style={{ color: c.ink }}>
+                      {p[k.key]}
+                      {k.unit ? ` ${k.unit}` : ''}
+                    </span>
+                  </div>
+                  <p className="text-[12px] leading-tight text-zinc-600">{k.help}</p>
+                  <input id={k.key} type="range" min={k.min} max={k.max} step={k.step} value={p[k.key]} onChange={(e) => set({ [k.key]: Number(e.target.value) })} className="w-full accent-zinc-900" />
                 </div>
-                <p className="text-footnote mb-1 text-[var(--text-muted)]">{k.help}</p>
-                <input
-                  id={k.key}
-                  type="range"
-                  min={k.min}
-                  max={k.max}
-                  step={k.step}
-                  value={p[k.key]}
-                  onChange={(e) => set({ [k.key]: Number(e.target.value) })}
-                  className="w-full accent-[var(--accent)]"
-                />
-              </div>
-            ))}
-          </Group>
-        ))}
-        <div className="overflow-hidden rounded-[10px] bg-[var(--bg-second)] [&>button+button]:border-t [&>button+button]:border-[var(--line)]">
-          <button type="button" onClick={randomize} className="min-h-11 w-full px-4 text-left text-[17px] text-[var(--accent)]">
-            Randomize style
+              ))}
+            </fieldset>
+          ))}
+        </div>
+        <div className="mt-4 flex gap-3">
+          <button type="button" onClick={randomize} className="min-h-11 flex-1 rounded-full bg-[var(--fill)] text-[15px] font-black uppercase">
+            Randomize Style
           </button>
           {!isNew && (
             <button
@@ -156,9 +196,9 @@ function Editor({ draft, isNew, onDone, onCancel }: { draft: Profile; isNew: boo
                 remove(p.id);
                 onCancel();
               }}
-              className="min-h-11 w-full px-4 text-left text-[17px] text-rose-400"
+              className="min-h-11 flex-1 rounded-full bg-[var(--fill)] text-[15px] font-black text-rose-400 uppercase"
             >
-              Delete player
+              Delete Player
             </button>
           )}
         </div>
@@ -167,49 +207,7 @@ function Editor({ draft, isNew, onDone, onCancel }: { draft: Profile; isNew: boo
   );
 }
 
-/** One big card: avatar, name, description, style numbers. Tapping it seats the player. */
-function Card({
-  title,
-  blurb,
-  stats,
-  avatar,
-  seated,
-  onPick,
-  onEdit,
-}: {
-  title: string;
-  blurb: string;
-  stats?: string;
-  avatar: ReactNode;
-  seated?: boolean;
-  onPick: () => void;
-  onEdit?: () => void;
-}) {
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        disabled={seated}
-        onClick={onPick}
-        className="flex h-full w-full gap-3 rounded-[14px] bg-[var(--bg-second)] p-4 text-left transition-colors hover:bg-[var(--bg-third)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--bg-second)]"
-      >
-        {avatar}
-        <span className="min-w-0 flex-1">
-          <span className="text-headline block truncate pr-10">{title}</span>
-          <span className="text-footnote mt-0.5 block text-[var(--text-muted)]">{seated ? 'At the table' : blurb}</span>
-          {stats && <span className="text-caption mt-1.5 block text-[var(--text-muted)] tabular-nums">{stats}</span>}
-        </span>
-      </button>
-      {onEdit && (
-        <button type="button" onClick={onEdit} className="absolute top-3 right-3 min-h-8 px-2 text-[15px] text-[var(--accent)]">
-          Edit
-        </button>
-      )}
-    </div>
-  );
-}
-
-const GRID = 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3';
+const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5';
 
 /** Pick the player for opponent `slot` (a slot past the end adds a seat). A tap seats them and closes. */
 export function BotPicker({ slot, onClose }: { slot: number; onClose: () => void }) {
@@ -238,42 +236,39 @@ export function BotPicker({ slot, onClose }: { slot: number; onClose: () => void
     );
 
   const card = (p: Profile, onEdit?: () => void) => (
-    <Card
-      key={p.id}
-      title={p.name}
-      blurb={p.blurb}
-      stats={styleLine(p)}
-      avatar={<Avatar p={p} size={48} />}
-      seated={taken.has(p.id)}
-      onPick={() => pick(p.id)}
-      onEdit={onEdit}
-    />
+    <PlayerCard key={p.id} p={p} custom={custom} seated={taken.has(p.id)} onPick={() => pick(p.id)} onEdit={onEdit} />
   );
 
   return (
-    <Sheet title={current ? `Replace ${findProfile(current, custom).name}` : 'Add player'} onClose={onClose} wide>
-      <div className="space-y-6 p-4 sm:p-5">
+    <Sheet title={current ? `Swap out ${findProfile(current, custom).name}` : 'Deal in a player'} onClose={onClose} wide>
+      <div className="space-y-7 p-4 sm:p-6">
         <section className={GRID}>
-          <Card
-            title="Random"
-            blurb="A new player with a random name and style."
-            avatar={<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl">🎲</span>}
-            onPick={() => pick()}
-          />
-          <Card
-            title="Custom"
-            blurb="Build your own with every style slider."
-            avatar={<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl">🛠️</span>}
-            onPick={() => setEditing({ draft: blankProfile(nextNpc), isNew: true })}
-          />
+          {/* Face down: who you get is a surprise. */}
+          <button type="button" onClick={() => pick()} className={`flex min-h-64 w-full rounded-[16px] bg-[#f7f4ea] p-2 shadow-[0_6px_14px_rgb(0_0_0/0.45)] ${DEALT}`}>
+            <span className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[11px] bg-[#0a5fd1] bg-[repeating-linear-gradient(45deg,rgb(255_255_255/0.14)_0_3px,transparent_3px_10px)] text-white">
+              <span className="text-[56px] leading-none font-black">?</span>
+              <span className="text-[17px] font-black tracking-widest uppercase">Random</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing({ draft: blankProfile(nextNpc), isNew: true })}
+            className={`flex min-h-64 w-full flex-col items-center justify-center gap-2 rounded-[16px] border-4 border-dashed border-[#f7f4ea]/60 text-[#f7f4ea] ${DEALT}`}
+          >
+            <span className="text-[56px] leading-none font-black">+</span>
+            <span className="text-[17px] font-black tracking-widest uppercase">Custom</span>
+            <span className="px-4 text-[12px] text-[#f7f4ea]/70">Build your own with every style slider.</span>
+          </button>
           {mine.map((p) => card(p, () => setEditing({ draft: p, isNew: false })))}
         </section>
         {(['Pros', 'Entertainers', 'Archetypes'] as const).map((g) => (
           <section key={g}>
-            <h3 className="text-footnote mb-2 px-1 text-[var(--text-muted)] uppercase">{g}</h3>
-            <div className={GRID}>
-              {PRESETS.filter((p) => p.group === g).map((p) => card(p))}
-            </div>
+            <h3 className="mb-3 flex items-center gap-2 text-[15px] font-black tracking-[0.2em] text-white uppercase">
+              <span className="text-[20px]">{SUIT_OF[g]}</span>
+              {g}
+              <span className="h-px flex-1 bg-white/20" />
+            </h3>
+            <div className={GRID}>{PRESETS.filter((p) => p.group === g).map((p) => card(p))}</div>
           </section>
         ))}
       </div>

@@ -15,7 +15,7 @@ export const SRC = {
   handsList: { by: 'Wikipedia', title: 'List of poker hands', url: 'https://en.wikipedia.org/wiki/List_of_poker_hands' },
   engine: {
     by: 'Poker Dictionary',
-    title: "Computed with this site's hand evaluator: 40,000 random deals per hand against one opponent, 60,000 for the multiway check",
+    title: "Computed with this site's hand evaluator: 30,000 random deals per hand at each table size",
     url: 'https://github.com/sawyerpham/pokerdictionary/blob/main/src/engine/cards.ts',
   },
   potOdds: { by: 'Wikipedia', title: 'Pot odds', url: 'https://en.wikipedia.org/wiki/Pot_odds' },
@@ -50,5 +50,4 @@ export const SRC = {
   sklansky: { by: 'David Sklansky', title: 'The Theory of Poker', where: 'Two Plus Two Publishing, 4th ed., 1999' },
   sklanskyMalmuth: { by: 'David Sklansky and Mason Malmuth', title: "Hold 'em Poker for Advanced Players", where: 'Two Plus Two Publishing, 1999' },
   mop: { by: 'Bill Chen and Jerrod Ankenman', title: 'The Mathematics of Poker', where: 'ConJelCo, 2006' },
-  tendler: { by: 'Jared Tendler and Barry Carter', title: 'The Mental Game of Poker', where: 'Jared Tendler LLC, 2011' },
 } satisfies Record<string, Source>;

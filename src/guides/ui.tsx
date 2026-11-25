@@ -119,3 +119,18 @@ export function Sources({ list }: { list: Source[] }) {
     </>
   );
 }
+
+/** Nearest simple fraction (denominator up to 12) for a percentage, e.g. 33 -> "1/3". */
+export function asFraction(percent: number): string {
+  const p = percent / 100;
+  let best = { n: 1, d: 2, err: Math.abs(p - 0.5) };
+  for (let d = 2; d <= 12; d++) {
+    const n = Math.max(1, Math.min(d - 1, Math.round(p * d)));
+    const err = Math.abs(p - n / d);
+    if (err < best.err - 1e-9) best = { n, d, err };
+    if (best.err < 0.012) break;
+  }
+  return `${best.n}/${best.d}`;
+}
+/** "36% (3/8)" */
+export const withFraction = (percent: number) => `${percent}% (${asFraction(percent)})`;
