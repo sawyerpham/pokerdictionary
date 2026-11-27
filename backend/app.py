@@ -370,11 +370,16 @@ IMAGE_RE = re.compile(r'^data:image/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$'
 def ask_deepseek(messages: list[dict]) -> str:
     req = urllib.request.Request(
         'https://api.deepseek.com/chat/completions',
-        data=json.dumps({'model': DEEPSEEK_MODEL, 'messages': messages, 'max_tokens': 3000}).encode(),
+        # deepseek-flash thinks before it answers and the thinking counts toward max_tokens, so leave room for both
+        # (12k output tokens is about 1.5 cents at most).
+        data=json.dumps({'model': DEEPSEEK_MODEL, 'messages': messages, 'max_tokens': 12000}).encode(),
         headers={'Authorization': f'Bearer {DEEPSEEK_KEY}', 'Content-Type': 'application/json', 'User-Agent': 'poker-dictionary'},
     )
-    with urllib.request.urlopen(req, timeout=240) as r:
-        return json.load(r)['choices'][0]['message']['content']
+    with urllib.request.urlopen(req, timeout=300) as r:
+        reply = (json.load(r)['choices'][0]['message'].get('content') or '').strip()
+    if not reply:
+        raise RuntimeError('DeepSeek returned no answer (it may have run out of room thinking)')
+    return reply
 
 
 @app.post('/api/coach')
