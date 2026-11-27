@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { NavLink } from 'react-router-dom';
+import { AccountMenu } from './AccountMenu';
 import { ToolCards } from './ToolCards';
 
 const LINKS = [
@@ -77,6 +78,7 @@ export function NavBar() {
               </NavLink>
             ),
           )}
+          <AccountMenu />
         </div>
       </nav>
       {open && (

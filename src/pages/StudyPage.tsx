@@ -5,6 +5,7 @@ import { EquityDrill } from '../study/EquityDrill';
 import { PreflopDrill } from '../study/PreflopDrill';
 import { RangeBuilder } from '../study/RangeBuilder';
 import { Solver } from '../study/Solver';
+import { useAccount } from '../state/account';
 import { TOOLS } from '../study/tools';
 import { Trainer } from '../study/Trainer';
 
@@ -12,6 +13,7 @@ const PAGES: Record<string, ComponentType> = { ranges: RangeBuilder, preflop: Pr
 
 export function StudyPage() {
   const { tool } = useParams();
+  const pulled = useAccount((s) => s.pulled); // newer data from your account: start the tool over with it
   const t = TOOLS.find((x) => x.slug === tool);
   if (!t) {
     return (
@@ -31,7 +33,7 @@ export function StudyPage() {
         <h1 className="text-title-2">{t.title}</h1>
         <p className="text-[15px] text-[var(--text-muted)]">{t.desc}</p>
       </div>
-      <Tool key={t.slug} />
+      <Tool key={`${t.slug}-${pulled}`} />
     </main>
   );
 }

@@ -7,6 +7,8 @@ import { GuidesPage } from './pages/GuidesPage';
 import { ChipsPage } from './pages/ChipsPage';
 import { EvaluatorPage } from './pages/EvaluatorPage';
 import { StudyPage } from './pages/StudyPage';
+import { SignInPage } from './pages/SignInPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 
 function DeepDiveRedirect() {
   return <Navigate to={`/guides/${useParams().slug}`} replace />;
@@ -28,6 +30,8 @@ function App() {
         <Route path="/study" element={<StudyPage />} />
         <Route path="/study/:tool" element={<StudyPage />} />
         <Route path="/chips" element={<ChipsPage />} />
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </div>

@@ -5,7 +5,17 @@ services:
   poker:
     build: .
     restart: unless-stopped
+    # Sign-in keys (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY): kept outside this folder so a
+    # redeploy that replaces the folder keeps them. Without it the site runs with sign-in hidden.
+    env_file:
+      - path: ../poker.env
+        required: false
+    volumes:
+      - data:/data
     networks: [deploy_default]
+
+volumes:
+  data:
 
 networks:
   deploy_default:
