@@ -41,6 +41,13 @@ ok(h['cross-origin-opener-policy'] == 'same-origin' and h['cross-origin-embedder
 # Study data from the server folder: served when there, a 404 (not the app page) when not.
 ok(web.get('/flops/index.json').json() == [], 'flop library index served')
 ok(web.get('/flops/missing.json').status_code == 404, 'missing library file is a 404')
+for header in ('content-security-policy', 'x-frame-options', 'x-content-type-options', 'referrer-policy', 'permissions-policy'):
+    ok(header in h, f'security header {header}')
+ok(web.get('/openapi.json').status_code == 404, 'no public API map')
+# Sign-in redirects: plain same-site paths only (browsers drop tabs and newlines, which would turn '/<tab>/x' into '//x').
+for bad in ('//evil.example', '/' + chr(92) + 'evil.example', '/' + chr(9) + '/evil.example', '/' + chr(10) + '/evil.example', 'https://evil.example', '/x' * 150):
+    ok(server.safe_next(bad) == '/', f'next path {bad!r} refused')
+ok(server.safe_next('/study/trainer?x=1') == '/study/trainer?x=1', 'ordinary next path kept')
 ok(web.get('/api/auth/providers').json() == {'google': False, 'email': True, 'coach': True}, 'providers')
 ok(web.post('/api/auth/email', json={'email': 'not-an-email'}).status_code == 400, 'bad address refused')
 
@@ -103,6 +110,14 @@ follow = {'messages': [*hand['messages'], {'role': 'assistant', 'text': 'Fold th
 ok(player.post('/api/coach', json=follow).json()['left'] == 0, 'follow-up counts')
 ok(player.post('/api/coach', json=follow).status_code == 429, 'daily cap for premium')
 ok(boss.post('/api/coach', json=hand).json()['left'] is None, 'no cap for owners')
+# A failed answer doesn't use up a reply.
+def failing(messages):
+    raise RuntimeError('down')
+server.ask_deepseek, working = failing, server.ask_deepseek
+before = sqlite3.connect(os.environ['DB_PATH']).execute('SELECT COUNT(*) FROM coach_uses').fetchone()[0]
+ok(boss.post('/api/coach', json=hand).status_code == 502, 'coach failure reported')
+ok(sqlite3.connect(os.environ['DB_PATH']).execute('SELECT COUNT(*) FROM coach_uses').fetchone()[0] == before, 'failed reply refunded')
+server.ask_deepseek = working
 
 # An admin can manage account types too.
 ok(boss.put(f'/api/admin/users/{pid}/role', json={'role': 'admin'}).status_code == 200, 'owner makes an admin')

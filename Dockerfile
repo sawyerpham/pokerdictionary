@@ -15,4 +15,4 @@ COPY --from=web /web/dist ./dist
 RUN mkdir /data && chown nobody /data
 ENV DB_PATH=/data/poker.db
 USER nobody
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]

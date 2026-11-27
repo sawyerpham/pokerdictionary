@@ -42,7 +42,7 @@ LINK_MINUTES = 15
 SYNCED = {'pokerdictionary-study', 'poker-settings', 'pokerdictionary-progress'}  # the browser stores that follow you between devices
 MAX_DOC = 512 * 1024
 
-app = FastAPI(docs_url=None, redoc_url=None)
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)  # no public map of the API
 
 
 def db() -> sqlite3.Connection:
@@ -82,9 +82,12 @@ def digest(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+NEXT_RE = re.compile(r'^/(?![/\\])[A-Za-z0-9/_.~%?=&-]{0,200}$')
+
+
 def safe_next(path: str | None) -> str:
-    """Only same-site paths, so a sign-in link can't send you somewhere else."""
-    return path if path and path.startswith('/') and not path.startswith('//') and '\\' not in path else '/'
+    """Only plain same-site paths, so a sign-in link can't send you somewhere else (no //, backslashes or control characters)."""
+    return path if path and NEXT_RE.match(path) else '/'
 
 
 def client_ip(request: Request) -> str:
@@ -124,6 +127,22 @@ def current_user(con: sqlite3.Connection, request: Request) -> sqlite3.Row:
     return row
 
 
+# Sent with every response. Cross-origin isolation (COOP + COEP) lets the in-browser solver share memory between
+# workers and use every core. The content policy allows only this site's own scripts (plus compiling WebAssembly),
+# styles, workers and connections, so injected markup can't load or run anything; no other site may frame the pages.
+SECURITY_HEADERS = {
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'credentialless',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; "
+                               "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; "
+                               "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+}
+
+
 @app.middleware('http')
 async def same_origin_writes(request: Request, call_next):
     # Cookies are SameSite=Lax already; also refuse writes another site's page tries to make.
@@ -131,9 +150,7 @@ async def same_origin_writes(request: Request, call_next):
     if request.method not in ('GET', 'HEAD', 'OPTIONS') and origin and origin != URL and not DEV:
         return Response('Cross-site request refused', status_code=403)
     response = await call_next(request)
-    # Cross-origin isolation: lets the in-browser solver share memory between workers and use every core.
-    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-    response.headers['Cross-Origin-Embedder-Policy'] = 'credentialless'
+    response.headers.update(SECURITY_HEADERS)
     return response
 
 
@@ -331,13 +348,15 @@ class RoleChange(BaseModel):
 @app.put('/api/admin/users/{user_id}/role')
 def admin_set_role(user_id: int, body: RoleChange, request: Request):
     with closing(db()) as con, con:
-        require(current_user(con, request), 'admin')
+        admin = current_user(con, request)
+        require(admin, 'admin')
         target = con.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         if not target:
             raise HTTPException(404, 'No such account')
         if role_of(target) == 'owner':
             raise HTTPException(400, 'Owners are set on the server, not here')
         con.execute('UPDATE users SET role = ? WHERE id = ?', (body.role, user_id))
+    print(f'role: {admin["email"]} set {target["email"]} from {role_of(target)} to {body.role}', flush=True)  # audit trail
     return {'ok': True}
 
 
@@ -395,15 +414,18 @@ def coach(body: CoachRequest, request: Request):
         raise HTTPException(400, 'Send a question')
     images = [img for m in msgs for img in m.images]
     if (len(images) > 6 or any(m.images and m.role != 'user' for m in msgs) or any(len(m.text) > 8000 for m in msgs)
-            or any(len(img) > 5_000_000 or not IMAGE_RE.match(img) for img in images)):
+            or any(len(img) > 3_000_000 or not IMAGE_RE.match(img) for img in images)):
         raise HTTPException(400, 'Up to 6 images (PNG, JPEG, WebP or GIF) and shorter messages, please')
-    with closing(db()) as con:
+    with closing(db()) as con, con:
         user = current_user(con, request)
         require(user, 'premium')
         if not DEEPSEEK_KEY:
             raise HTTPException(503, "The AI coach isn't set up yet")
+        # Count this reply before asking, so requests sent at once can't all slip under the daily cap (the insert holds
+        # the database's write lock until this block commits); a failed answer gives it back.
+        use = con.execute('INSERT INTO coach_uses VALUES (?, ?)', (user['id'], int(time.time()))).lastrowid
         used = con.execute('SELECT COUNT(*) FROM coach_uses WHERE user_id = ? AND at >= ?', (user['id'], day_start())).fetchone()[0]
-        if role_of(user) == 'premium' and used >= COACH_DAILY:
+        if role_of(user) == 'premium' and used > COACH_DAILY:
             raise HTTPException(429, f"That's today's {COACH_DAILY} coach replies. More tomorrow (UTC).")
     name = f" named {user['name'].split()[0]}" if user['name'] else ''
     messages = [{'role': 'system', 'content': COACH_PROMPT.format(name=name)}]
@@ -418,10 +440,10 @@ def coach(body: CoachRequest, request: Request):
     except Exception as e:
         detail = e.read().decode(errors='replace')[:300] if hasattr(e, 'read') else str(e)
         print(f'coach: DeepSeek failed: {detail}', flush=True)
+        with closing(db()) as con, con:
+            con.execute('DELETE FROM coach_uses WHERE rowid = ?', (use,))
         raise HTTPException(502, "The coach couldn't answer just now. Try again in a minute.")
-    with closing(db()) as con, con:
-        con.execute('INSERT INTO coach_uses VALUES (?, ?)', (user['id'], int(time.time())))
-    return {'reply': reply, 'left': max(0, COACH_DAILY - used - 1) if role_of(user) == 'premium' else None}
+    return {'reply': reply, 'left': max(0, COACH_DAILY - used) if role_of(user) == 'premium' else None}
 
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
