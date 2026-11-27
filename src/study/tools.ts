@@ -5,4 +5,5 @@ export const TOOLS = [
   { slug: 'equity', title: 'Equity drill', desc: 'Guess how often your hand wins against a range on a board, then see the answer.' },
   { slug: 'solver', title: 'Solver', desc: 'Solve heads-up turn and river spots in your browser: strategy and EV for every hand.' },
   { slug: 'trainer', title: 'Trainer', desc: 'Play turn and river hands against the solver. Every decision is graded by chips lost.' },
+  { slug: 'coach', title: 'AI coach', desc: 'Send a screenshot of a hand and get coached through every decision.', premium: true },
 ];

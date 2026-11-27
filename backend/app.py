@@ -10,13 +10,18 @@ import urllib.parse
 import urllib.request
 from contextlib import closing
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
 # The poker engine and the solver run in the browser. The server serves the built site and keeps accounts:
-# sign-in (Google or an emailed link), sessions, and each user's synced data.
+# sign-in (Google or an emailed link), sessions, each user's synced data, account types, and the AI coach.
+#
+# Account types: "owner" (the emails in OWNER_EMAILS; set only on the server, so nobody can lock the owner out),
+# "admin" (set by an owner or admin on the Admin page; manages account types), "premium" (the AI coach) and
+# "default". Each type includes everything below it.
 DIST = Path(__file__).parent / 'dist'
 DB = os.environ.get('DB_PATH', str(Path(__file__).parent / 'poker.db'))
 URL = os.environ.get('PUBLIC_URL', 'https://poker.sawyerpham.dev').rstrip('/')
@@ -24,6 +29,10 @@ GOOGLE_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
 RESEND_KEY = os.environ.get('RESEND_API_KEY', '')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'Poker Dictionary <login@sawyerpham.dev>')
+OWNERS = {e.strip().lower() for e in os.environ.get('OWNER_EMAILS', '').split(',') if e.strip()}
+DEEPSEEK_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+DEEPSEEK_MODEL = os.environ.get('DEEPSEEK_MODEL', 'deepseek-flash')  # the DeepSeek model that reads images
+COACH_DAILY = int(os.environ.get('COACH_DAILY', '30'))  # coach replies a premium account gets per day; admins and owners have no cap
 DEV = os.environ.get('DEV') == '1'  # local only: plain-http cookies, sign-in links printed instead of emailed
 
 SESSION_DAYS = 90
@@ -49,7 +58,21 @@ with closing(db()) as con, con:
         CREATE TABLE IF NOT EXISTS attempts (key TEXT NOT NULL, at INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS docs (user_id INTEGER NOT NULL, name TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL,
                                          PRIMARY KEY (user_id, name));
+        CREATE TABLE IF NOT EXISTS coach_uses (user_id INTEGER NOT NULL, at INTEGER NOT NULL);
     ''')
+    if 'role' not in [c['name'] for c in con.execute('PRAGMA table_info(users)')]:
+        con.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'default'")
+
+RANK = {'default': 0, 'premium': 1, 'admin': 2, 'owner': 3}
+
+
+def role_of(user: sqlite3.Row) -> str:
+    return 'owner' if user['email'] in OWNERS else user['role']
+
+
+def require(user: sqlite3.Row, role: str) -> None:
+    if RANK[role_of(user)] < RANK[role]:
+        raise HTTPException(403, f'This needs a {role} account')
 
 
 def digest(token: str) -> str:
@@ -115,14 +138,14 @@ def health():
 
 @app.get('/api/auth/providers')
 def providers():
-    return {'google': bool(GOOGLE_ID and GOOGLE_SECRET), 'email': bool(RESEND_KEY) or DEV}
+    return {'google': bool(GOOGLE_ID and GOOGLE_SECRET), 'email': bool(RESEND_KEY) or DEV, 'coach': bool(DEEPSEEK_KEY)}
 
 
 @app.get('/api/me')
 def me(request: Request):
     with closing(db()) as con:
         user = current_user(con, request)
-        return {'email': user['email'], 'name': user['name']}
+        return {'email': user['email'], 'name': user['name'], 'role': role_of(user)}
 
 
 @app.post('/api/logout')
@@ -138,7 +161,7 @@ def logout(request: Request, response: Response):
 def delete_account(request: Request, response: Response):
     with closing(db()) as con, con:
         user = current_user(con, request)
-        for table in ('docs', 'sessions'):
+        for table in ('docs', 'sessions', 'coach_uses'):
             con.execute(f'DELETE FROM {table} WHERE user_id = ?', (user['id'],))
         con.execute('DELETE FROM users WHERE id = ?', (user['id'],))
     response.delete_cookie('session')
@@ -278,6 +301,116 @@ def sync_put(name: str, doc: Doc, request: Request):
         )
     return {'ok': True}
 
+
+# --- Admin: account types.
+
+def day_start() -> int:
+    return int(time.time()) // 86400 * 86400
+
+
+@app.get('/api/admin/users')
+def admin_users(request: Request):
+    with closing(db()) as con:
+        require(current_user(con, request), 'admin')
+        rows = con.execute('''SELECT users.*, (SELECT COUNT(*) FROM coach_uses WHERE user_id = users.id AND at >= ?) AS coach_today
+                              FROM users ORDER BY created''', (day_start(),)).fetchall()
+        return [{'id': r['id'], 'email': r['email'], 'name': r['name'], 'role': role_of(r), 'created': r['created'], 'coachToday': r['coach_today']}
+                for r in rows]
+
+
+class RoleChange(BaseModel):
+    role: Literal['default', 'premium', 'admin']
+
+
+@app.put('/api/admin/users/{user_id}/role')
+def admin_set_role(user_id: int, body: RoleChange, request: Request):
+    with closing(db()) as con, con:
+        require(current_user(con, request), 'admin')
+        target = con.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(404, 'No such account')
+        if role_of(target) == 'owner':
+            raise HTTPException(400, 'Owners are set on the server, not here')
+        con.execute('UPDATE users SET role = ? WHERE id = ?', (body.role, user_id))
+    return {'ok': True}
+
+
+# --- AI coach: DeepSeek reads your screenshot and notes and coaches you through the hand.
+
+COACH_PROMPT = '''You are a personal poker coach for a no-limit hold'em player{name}. They send screenshots of hands \
+(from online clients, hand histories, or this site's own tools) with notes, and ask follow-up questions.
+
+When you get a hand:
+1. Read the screenshot carefully: game and stakes, stack sizes (in big blinds), positions, hole cards, board, and every \
+action with sizes. Say what you read in one or two lines. If something you need can't be read, say exactly what and give \
+your best read or ask for it; never invent cards or actions.
+2. Go street by street. For each of the player's decisions, say whether it was good, okay, or a mistake, and why: ranges \
+(theirs and the opponent's as the action tells it), equity, pot odds, bet sizing, position, and blockers.
+3. Name the biggest leak in the hand and the better line, with sizes.
+4. End with one or two concrete things to practice.
+
+Coach like a strong player who wants them to improve: direct, specific, and honest about mistakes, no filler. Explain \
+terms briefly when you use them. Use short "##" headings, "-" bullets and **bold** for key points; no tables. Keep it \
+under about 400 words unless they ask for more. Only discuss poker and how to improve at it.'''
+
+
+class CoachMessage(BaseModel):
+    role: Literal['user', 'assistant']
+    text: str = ''
+    images: list[str] = []  # data:image/...;base64,... (user messages only)
+
+
+class CoachRequest(BaseModel):
+    messages: list[CoachMessage]
+
+
+IMAGE_RE = re.compile(r'^data:image/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$')
+
+
+def ask_deepseek(messages: list[dict]) -> str:
+    req = urllib.request.Request(
+        'https://api.deepseek.com/chat/completions',
+        data=json.dumps({'model': DEEPSEEK_MODEL, 'messages': messages, 'max_tokens': 3000}).encode(),
+        headers={'Authorization': f'Bearer {DEEPSEEK_KEY}', 'Content-Type': 'application/json', 'User-Agent': 'poker-dictionary'},
+    )
+    with urllib.request.urlopen(req, timeout=240) as r:
+        return json.load(r)['choices'][0]['message']['content']
+
+
+@app.post('/api/coach')
+def coach(body: CoachRequest, request: Request):
+    msgs = body.messages
+    if not 1 <= len(msgs) <= 40 or msgs[-1].role != 'user':
+        raise HTTPException(400, 'Send a question')
+    images = [img for m in msgs for img in m.images]
+    if (len(images) > 6 or any(m.images and m.role != 'user' for m in msgs) or any(len(m.text) > 8000 for m in msgs)
+            or any(len(img) > 5_000_000 or not IMAGE_RE.match(img) for img in images)):
+        raise HTTPException(400, 'Up to 6 images (PNG, JPEG, WebP or GIF) and shorter messages, please')
+    with closing(db()) as con:
+        user = current_user(con, request)
+        require(user, 'premium')
+        if not DEEPSEEK_KEY:
+            raise HTTPException(503, "The AI coach isn't set up yet")
+        used = con.execute('SELECT COUNT(*) FROM coach_uses WHERE user_id = ? AND at >= ?', (user['id'], day_start())).fetchone()[0]
+        if role_of(user) == 'premium' and used >= COACH_DAILY:
+            raise HTTPException(429, f"That's today's {COACH_DAILY} coach replies. More tomorrow (UTC).")
+    name = f" named {user['name'].split()[0]}" if user['name'] else ''
+    messages = [{'role': 'system', 'content': COACH_PROMPT.format(name=name)}]
+    for m in msgs:
+        if m.images:
+            parts = [{'type': 'image_url', 'image_url': {'url': img}} for img in m.images]
+            messages.append({'role': 'user', 'content': [*parts, {'type': 'text', 'text': m.text or 'Coach me on this hand.'}]})
+        else:
+            messages.append({'role': m.role, 'content': m.text})
+    try:
+        reply = ask_deepseek(messages)
+    except Exception as e:
+        detail = e.read().decode(errors='replace')[:300] if hasattr(e, 'read') else str(e)
+        print(f'coach: DeepSeek failed: {detail}', flush=True)
+        raise HTTPException(502, "The coach couldn't answer just now. Try again in a minute.")
+    with closing(db()) as con, con:
+        con.execute('INSERT INTO coach_uses VALUES (?, ?)', (user['id'], int(time.time())))
+    return {'reply': reply, 'left': max(0, COACH_DAILY - used - 1) if role_of(user) == 'premium' else None}
 
 if DIST.exists():
     from fastapi.staticfiles import StaticFiles

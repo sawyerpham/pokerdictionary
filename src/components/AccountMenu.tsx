@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { deleteAccount, signOut, useAccount } from '../state/account';
+import { Link, useLocation } from 'react-router-dom';
+import { atLeast, deleteAccount, ROLE_LABEL, signOut, useAccount } from '../state/account';
 import { INPUT } from './RuleControls';
 
 const BUTTON = 'flex min-h-11 w-full items-center justify-center rounded-full px-5 text-[15px] font-semibold transition hover:brightness-110 disabled:opacity-40';
@@ -60,8 +60,15 @@ function AccountDialog({ failed, next, onClose }: { failed: boolean; next: strin
       {me ? (
         <div className="flex flex-col gap-3">
           <p className="text-headline">{me.name ?? 'Signed in'}</p>
-          <p className="-mt-2 text-[15px] text-[var(--text-muted)]">{me.email}</p>
+          <p className="-mt-2 text-[15px] text-[var(--text-muted)]">
+            {me.email} · {ROLE_LABEL[me.role]} account
+          </p>
           <p className="text-[15px] text-[var(--text-muted)]">Your ranges, drill progress, settings and players sync to this account.</p>
+          {atLeast(me, 'admin') && (
+            <Link to="/admin" onClick={() => ref.current?.close()} className={`${BUTTON} bg-[var(--bg-third)]`}>
+              Admin: account types
+            </Link>
+          )}
           <button type="button" onClick={() => signOut().then(() => ref.current?.close())} className={`${BUTTON} bg-[var(--bg-third)]`}>
             Sign out
           </button>

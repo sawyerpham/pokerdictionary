@@ -1,6 +1,6 @@
 # Runs on the Oracle VM next to the other sites. The shared Caddy (network deploy_default)
 # does HTTPS and proxies poker.sawyerpham.dev -> poker:8000.
-#   docker compose up -d --build
+#   docker compose up -d --build   (CI does this on every push to main: see deploy/cd.sh)
 services:
   poker:
     build: .
@@ -12,6 +12,13 @@ services:
         required: false
     volumes:
       - data:/data
+    # `docker compose up --wait` (deploy/cd.sh) waits for this before calling a deploy done.
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 2s
     networks: [deploy_default]
 
 volumes:

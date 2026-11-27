@@ -4,13 +4,16 @@ import sys
 import tempfile
 from pathlib import Path
 
-os.environ.update(DB_PATH=str(Path(tempfile.mkdtemp()) / 'check.db'), DEV='1', PUBLIC_URL='http://testserver')
+os.environ.update(DB_PATH=str(Path(tempfile.mkdtemp()) / 'check.db'), DEV='1', PUBLIC_URL='http://testserver',
+                  OWNER_EMAILS='boss@example.com', DEEPSEEK_API_KEY='test', COACH_DAILY='2')
 sys.path.insert(0, str(Path(__file__).parent))
 import app as server  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 sent: list[str] = []
 server.send_email = lambda to, link: sent.append(link)
+asked: list[list[dict]] = []
+server.ask_deepseek = lambda messages: asked.append(messages) or 'Fold the river.'
 web = TestClient(server.app)
 
 
@@ -28,7 +31,7 @@ def sign_in(client: TestClient, email: str, next_path: str = '/study') -> None:
 
 
 ok(web.get('/api/me').status_code == 401, 'signed out at first')
-ok(web.get('/api/auth/providers').json() == {'google': False, 'email': True}, 'providers')
+ok(web.get('/api/auth/providers').json() == {'google': False, 'email': True, 'coach': True}, 'providers')
 ok(web.post('/api/auth/email', json={'email': 'not-an-email'}).status_code == 400, 'bad address refused')
 
 # Email sign-in: a link, used once, starts a session; the next path is kept but only if it's on this site.
@@ -59,6 +62,41 @@ ok(other.delete('/api/me').status_code == 200 and other.get('/api/me').status_co
 with server.db() as con:
     ok(con.execute("SELECT COUNT(*) FROM users WHERE email = 'someone@example.com'").fetchone()[0] == 0, 'user row gone')
     ok(con.execute('SELECT COUNT(*) FROM docs').fetchone()[0] == 1, 'their docs gone, the first user\'s kept')
+
+# Account types: owners come from OWNER_EMAILS; a default account can't use the coach or the Admin page.
+PNG = 'data:image/png;base64,iVBORw0KGgo='
+hand = {'messages': [{'role': 'user', 'text': 'Was my river call good?', 'images': [PNG]}]}
+player, boss = TestClient(server.app), TestClient(server.app)
+sign_in(player, 'player2@example.com')
+sign_in(boss, 'Boss@Example.com')
+ok(player.get('/api/me').json()['role'] == 'default' and boss.get('/api/me').json()['role'] == 'owner', 'roles from sign-in')
+ok(player.post('/api/coach', json=hand).status_code == 403, 'default accounts have no coach')
+ok(player.get('/api/admin/users').status_code == 403, 'default accounts have no Admin page')
+
+# The owner makes the player premium; nobody can change an owner here.
+users = boss.get('/api/admin/users').json()
+pid = next(u['id'] for u in users if u['email'] == 'player2@example.com')
+bid = next(u['id'] for u in users if u['email'] == 'boss@example.com')
+ok(boss.put(f'/api/admin/users/{pid}/role', json={'role': 'premium'}).status_code == 200, 'owner sets premium')
+ok(boss.put(f'/api/admin/users/{bid}/role', json={'role': 'default'}).status_code == 400, 'owner role is fixed')
+ok(boss.put(f'/api/admin/users/{pid}/role', json={'role': 'owner'}).status_code == 422, 'owner is not grantable')
+
+# Premium: the coach gets the system prompt, the screenshot and the question; bad images are refused; 2 a day here.
+r = player.post('/api/coach', json=hand)
+ok(r.status_code == 200 and r.json() == {'reply': 'Fold the river.', 'left': 1}, f'coach reply {r.text}')
+sent_msgs = asked[-1]
+ok(sent_msgs[0]['role'] == 'system' and 'poker coach' in sent_msgs[0]['content'], 'system prompt first')
+ok(sent_msgs[1]['content'][0] == {'type': 'image_url', 'image_url': {'url': PNG}} and sent_msgs[1]['content'][1]['text'] == 'Was my river call good?', 'screenshot and question forwarded')
+bad = {'messages': [{'role': 'user', 'text': 'x', 'images': ['data:text/html;base64,PGI+']}]}
+ok(player.post('/api/coach', json=bad).status_code == 400, 'non-image refused')
+follow = {'messages': [*hand['messages'], {'role': 'assistant', 'text': 'Fold the river.'}, {'role': 'user', 'text': 'Why?'}]}
+ok(player.post('/api/coach', json=follow).json()['left'] == 0, 'follow-up counts')
+ok(player.post('/api/coach', json=follow).status_code == 429, 'daily cap for premium')
+ok(boss.post('/api/coach', json=hand).json()['left'] is None, 'no cap for owners')
+
+# An admin can manage account types too.
+ok(boss.put(f'/api/admin/users/{pid}/role', json={'role': 'admin'}).status_code == 200, 'owner makes an admin')
+ok(player.get('/api/admin/users').status_code == 200, 'admins see the Admin page')
 
 # Google sign-in is off until it's configured.
 ok(web.get('/api/auth/google', follow_redirects=False).status_code == 404, 'google off without keys')

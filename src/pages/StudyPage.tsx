@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ToolCards } from '../components/ToolCards';
+import { Coach } from '../study/Coach';
 import { EquityDrill } from '../study/EquityDrill';
 import { PreflopDrill } from '../study/PreflopDrill';
 import { RangeBuilder } from '../study/RangeBuilder';
@@ -9,7 +10,7 @@ import { useAccount } from '../state/account';
 import { TOOLS } from '../study/tools';
 import { Trainer } from '../study/Trainer';
 
-const PAGES: Record<string, ComponentType> = { ranges: RangeBuilder, preflop: PreflopDrill, equity: EquityDrill, solver: Solver, trainer: Trainer };
+const PAGES: Record<string, ComponentType> = { ranges: RangeBuilder, preflop: PreflopDrill, equity: EquityDrill, solver: Solver, trainer: Trainer, coach: Coach };
 
 export function StudyPage() {
   const { tool } = useParams();

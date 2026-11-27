@@ -3,18 +3,25 @@ import { create } from 'zustand';
 import { useSettings } from './settingsStore';
 import { useStudy } from './studyStore';
 
+export type Role = 'default' | 'premium' | 'admin' | 'owner';
+export const ROLE_LABEL: Record<Role, string> = { default: 'Default', premium: 'Premium', admin: 'Admin', owner: 'Owner' };
+const RANK: Record<Role, number> = { default: 0, premium: 1, admin: 2, owner: 3 };
+/** Each account type includes everything below it. */
+export const atLeast = (me: Me | null | undefined, role: Role) => !!me && RANK[me.role] >= RANK[role];
+
 export interface Me {
   email: string;
   name: string | null;
+  role: Role;
 }
 
 interface Account {
   me?: Me | null; // undefined while loading
-  providers: { google: boolean; email: boolean };
+  providers: { google: boolean; email: boolean; coach: boolean };
   pulled: number; // goes up when newer data arrives from the account, so open tools reload it
 }
 
-export const useAccount = create<Account>(() => ({ providers: { google: false, email: false }, pulled: 0 }));
+export const useAccount = create<Account>(() => ({ providers: { google: false, email: false, coach: false }, pulled: 0 }));
 
 const STORES = [useStudy, useSettings];
 const changedAt = (name: string) => `sync-at:${name}`;

@@ -48,6 +48,14 @@ export function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="AI coach (Premium accounts)">
+        <p>
+          When you ask the coach about a hand, your screenshots and messages are sent to DeepSeek, an AI provider, to write the reply. They aren’t
+          saved on this site; we only count how many replies you’ve had today, for the daily limit. DeepSeek’s own privacy policy covers what it
+          does with them.
+        </p>
+      </Section>
+
       <Section title="Cookies">
         <p>
           The only cookies are the one that keeps you signed in and a short-lived one used during Google sign-in. There are no advertising or
