@@ -191,4 +191,9 @@ ok(won && lost, 'two hands parsed');
 ok(won.position === 'BTN' && Math.abs(won.net - 5.22) < 1e-9 && won.rfi?.raised && won.rfi.inChart && won.cbet === true && !won.showdown, `button hand: ${JSON.stringify(won)}`);
 ok(lost.position === 'BB' && Math.abs(lost.net + 5.5) < 1e-9 && lost.vpip && !lost.pfr && lost.threeBet === false && lost.showdown && !lost.wonShowdown, `big blind hand: ${JSON.stringify(lost)}`);
 ok(lost.facingOpen?.spot === 'BTN-BB' && lost.facingOpen.chose === 'Call' && lost.facingOpen.best === 'Fold' && lost.facingOpen.loss > 0.1, `72o call vs BTN: ${JSON.stringify(lost.facingOpen)}`);
+// Chip calculator with a color fixed by hand: 10 whites each, the other colors still make exactly $200.
+const fixedSplit = splitChips(set, 6, 20000, false, [10, undefined, undefined, undefined])!;
+ok(fixedSplit.perPlayer[0] === 10 && fixedSplit.exact, `fixed whites: ${JSON.stringify(fixedSplit)}`);
+const tooMany = splitChips(set, 6, 20000, false, [undefined, undefined, undefined, 3])!;
+ok(tooMany.perPlayer[3] === 3 && tooMany.value === 30000 && !tooMany.exact, 'fixed chips worth more than the buy-in are kept and flagged');
 console.log('engine self-check passed');

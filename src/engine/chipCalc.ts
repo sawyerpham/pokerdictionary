@@ -20,11 +20,21 @@ const COLUMN = 20; // chips per color that count as useful; more than this is cl
 /**
  * Exact-value split that favours small chips (they make change) and using every color, without piling up chips.
  * Scored per color, so a knapsack DP over value finds the best. If the buy-in can't be made exactly, returns the
- * best split for the largest value below it. Null when nothing fits at all.
+ * best split for the largest value below it. Null when nothing fits at all. `fixed[i]`, when set, is how many of
+ * color i each player gets, whatever that does to the total.
  */
-export function splitChips(colors: ChipColor[], players: number, buyInCents: number, cheapestFirst = false): Split | null {
-  if (cheapestFirst) return splitCheapestFirst(colors, players, buyInCents);
+export function splitChips(colors: ChipColor[], players: number, buyInCents: number, cheapestFirst = false, fixed: (number | undefined)[] = []): Split | null {
   if (players < 1 || buyInCents <= 0) return null;
+  // Colors with a set number per player keep it (within what the set allows); the rest make up what's left of the buy-in.
+  if (fixed.some((n) => n !== undefined)) {
+    const set = colors.map((c, i) => (fixed[i] === undefined ? undefined : Math.max(0, Math.min(fixed[i]!, Math.floor(c.count / players)))));
+    const left = buyInCents - set.reduce((sum: number, n, i) => sum + (n ?? 0) * colors[i].cents, 0);
+    const rest = left > 0 ? splitChips(colors.map((c, i) => (set[i] === undefined ? c : { ...c, count: 0 })), players, left, cheapestFirst) : null;
+    const perPlayer = colors.map((_, i) => set[i] ?? rest?.perPlayer[i] ?? 0);
+    const value = perPlayer.reduce((sum, n, i) => sum + n * colors[i].cents, 0);
+    return value > 0 ? { perPlayer, value, exact: value === buyInCents } : null;
+  }
+  if (cheapestFirst) return splitCheapestFirst(colors, players, buyInCents);
   const usable = colors
     .map((c, i) => ({ ...c, i, max: Math.floor(c.count / players) }))
     .filter((c) => c.cents > 0 && c.max > 0 && c.cents <= buyInCents)

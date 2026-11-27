@@ -24,7 +24,7 @@ interface CalcState {
   players: number;
   buyIn: string; // dollars, as typed
   cheapestFirst: boolean;
-  colors: { name: string; count: string; value: string }[]; // name is a PALETTE name
+  colors: { name: string; count: string; value: string; each?: number }[]; // name is a PALETTE name; each: per player, set by hand (else automatic)
 }
 
 const DEFAULT: CalcState = {
@@ -49,7 +49,7 @@ function load(): CalcState {
     const colors = saved.colors.map((c: CalcState['colors'][number]) => {
       const name = PALETTE.some((p) => p.name === c.name) && !used.has(c.name) ? c.name : (PALETTE.find((p) => !used.has(p.name))?.name ?? 'Gray');
       used.add(name);
-      return { name, count: String(c.count), value: String(c.value) };
+      return { name, count: String(c.count), value: String(c.value), each: typeof c.each === 'number' ? c.each : undefined };
     });
     return { ...DEFAULT, ...saved, colors };
   } catch {
@@ -90,7 +90,9 @@ export function ChipsPage() {
 
   const colors: ChipColor[] = s.colors.map((c) => ({ name: c.name, color: colorOf(c.name), count: toInt(c.count), cents: toCents(c.value) }));
   const buyIn = toCents(s.buyIn);
-  const split = useMemo(() => splitChips(colors, s.players, buyIn, s.cheapestFirst), [JSON.stringify(colors), s.players, buyIn, s.cheapestFirst]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fixed = s.colors.map((c) => c.each);
+  const split = useMemo(() => splitChips(colors, s.players, buyIn, s.cheapestFirst, fixed), [JSON.stringify(colors), JSON.stringify(fixed), s.players, buyIn, s.cheapestFirst]); // eslint-disable-line react-hooks/exhaustive-deps
+  const anyFixed = fixed.some((n) => n !== undefined);
   const unused = PALETTE.filter((p) => !s.colors.some((c) => c.name === p.name));
   // Results always read from the cheapest chip to the most valuable, whatever order the set was entered in.
   const used = split
@@ -139,32 +141,63 @@ export function ChipsPage() {
             <span />
           </div>
           <div className="space-y-1.5">
-            {s.colors.map((c, i) => (
-              <div key={i} className="grid grid-cols-[1.75rem_1fr_4.5rem_5.5rem_1.75rem] items-center gap-1.5 sm:gap-2">
-                <span className="h-7 w-7 rounded-full ring-1 ring-white/25" style={{ background: colorOf(c.name) }} aria-hidden />
-                <select aria-label="Chip color" value={c.name} onChange={(e) => setColor(i, { name: e.target.value })} className={`${INPUT} cursor-pointer`}>
-                  {PALETTE.map((p) => (
-                    <option key={p.name} value={p.name} disabled={p.name !== c.name && s.colors.some((o) => o.name === p.name)} className="bg-[var(--bg-second)]">
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <input aria-label={`${c.name} chips in set`} inputMode="numeric" value={c.count} onChange={(e) => setColor(i, { count: e.target.value })} className={INPUT} />
-                <label className="flex items-center gap-1">
-                  <span className="text-[15px] text-[var(--text-muted)]">$</span>
-                  <input aria-label={`${c.name} value in dollars`} inputMode="decimal" value={c.value} onChange={(e) => setColor(i, { value: e.target.value })} className={INPUT} />
-                </label>
-                <button
-                  type="button"
-                  aria-label={`Remove ${c.name}`}
-                  onClick={() => setS({ ...s, colors: s.colors.filter((_, k) => k !== i) })}
-                  className="hit relative flex h-7 w-7 items-center justify-center rounded-full text-[19px] text-[var(--text-muted)] hover:text-rose-400"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+            {s.colors.map((c, i) => {
+              const max = s.players > 0 ? Math.floor(toInt(c.count) / s.players) : 0;
+              const each = c.each === undefined ? (split?.perPlayer[i] ?? 0) : Math.min(c.each, max);
+              return (
+                <div key={i} className="rounded-[10px] py-1">
+                  <div className="grid grid-cols-[1.75rem_1fr_4.5rem_5.5rem_1.75rem] items-center gap-1.5 sm:gap-2">
+                    <span className="h-7 w-7 rounded-full ring-1 ring-white/25" style={{ background: colorOf(c.name) }} aria-hidden />
+                    <select aria-label="Chip color" value={c.name} onChange={(e) => setColor(i, { name: e.target.value })} className={`${INPUT} cursor-pointer`}>
+                      {PALETTE.map((p) => (
+                        <option key={p.name} value={p.name} disabled={p.name !== c.name && s.colors.some((o) => o.name === p.name)} className="bg-[var(--bg-second)]">
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input aria-label={`${c.name} chips in set`} inputMode="numeric" value={c.count} onChange={(e) => setColor(i, { count: e.target.value })} className={INPUT} />
+                    <label className="flex items-center gap-1">
+                      <span className="text-[15px] text-[var(--text-muted)]">$</span>
+                      <input aria-label={`${c.name} value in dollars`} inputMode="decimal" value={c.value} onChange={(e) => setColor(i, { value: e.target.value })} className={INPUT} />
+                    </label>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${c.name}`}
+                      onClick={() => setS({ ...s, colors: s.colors.filter((_, k) => k !== i) })}
+                      className="hit relative flex h-7 w-7 items-center justify-center rounded-full text-[19px] text-[var(--text-muted)] hover:text-rose-400"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 pl-[2.125rem] text-[15px] sm:pl-[2.25rem]">
+                    <span className="w-24 shrink-0 tabular-nums">
+                      <strong>{each}</strong> <span className="text-[var(--text-muted)]">each</span>
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={max}
+                      value={each}
+                      disabled={max === 0}
+                      aria-label={`${c.name} chips per player`}
+                      onChange={(e) => setColor(i, { each: Number(e.target.value) })}
+                      className="h-7 min-w-0 flex-1 accent-[var(--accent)]"
+                    />
+                    {c.each === undefined ? (
+                      <span className="w-12 text-right text-[13px] text-[var(--text-muted)]">Auto</span>
+                    ) : (
+                      <button type="button" onClick={() => setColor(i, { each: undefined })} className="hit relative w-12 text-right text-[13px] text-[var(--accent)]">
+                        Auto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+          <p className="text-footnote mt-2 text-[var(--text-muted)]">
+            Drag a slider to set how many of that color each player gets. Colors left on Auto make up the rest of the buy-in.
+          </p>
           <div className="mt-1 flex items-center justify-between">
             <button
               type="button"
@@ -204,7 +237,11 @@ export function ChipsPage() {
                 <strong>{chipsEach} chips</strong> worth <strong>{dollars(split.value)}</strong>
               </p>
               {!split.exact && (
-                <p className="text-footnote mt-1 text-center text-amber-300">Can't make {dollars(buyIn)} exactly with these chips.</p>
+                <p className="text-footnote mt-1 text-center text-amber-300">
+                  {split.value > buyIn
+                    ? `That's ${dollars(split.value - buyIn)} over the ${dollars(buyIn)} buy-in. Lower a slider or set it back to Auto.`
+                    : `Can't make ${dollars(buyIn)} exactly with these chips${anyFixed ? ' and the colors you set' : ''}.`}
+                </p>
               )}
               <p className="text-footnote mt-3 border-t border-[var(--line)] pt-3 text-[var(--text-muted)] tabular-nums">
                 Left over: {used.map((c) => `${c.left} ${c.name.toLowerCase()}`).join(', ')}
