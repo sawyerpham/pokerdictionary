@@ -3,9 +3,9 @@ import { PlayingCard } from '../components/PlayingCard';
 import { Segmented } from '../components/RuleControls';
 import { describe, evaluate, shuffledDeck, type Card } from '../engine/cards';
 import { pickWeighted, solverCard, solverRange } from '../engine/ranges';
-import { actionLabel, nodeAt, solveRiver, type NodeInfo, type Solved } from '../solver/client';
+import { actionLabel, nodeAt, solveSpot, type NodeInfo, type Progress, type Solved } from '../solver/client';
 import { findRange, useStudy } from '../state/studyStore';
-import { DEFAULTS, holesOf, PLAYER } from './river';
+import { cardName, DEFAULTS, holesOf, PLAYER, SIZES, STREETS } from './spots';
 import { BUTTON, PANEL, RangeSelect } from './ui';
 
 interface Decision {
@@ -18,12 +18,12 @@ interface Decision {
 
 interface Hand {
   solved: Solved;
-  board: Card[];
   hero: number; // 0 OOP, 1 IP
   holes: Card[][][]; // by player, solver order
   heroIdx: number;
   villainIdx: number;
   node: NodeInfo;
+  runout?: Card; // river dealt only to show the showdown after an all-in on the turn
   log: string[];
   decisions: Decision[];
 }
@@ -33,27 +33,47 @@ const SEATS = [
   { value: 0, label: 'OOP' },
   { value: 1, label: 'IP' },
 ];
+const random = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
 
-/** Let the villain act from the solved strategy, with its one hand, until it's your turn or the hand ends. */
-async function villainActs(hand: Hand): Promise<Hand> {
+/** Plays the villain (from the solved strategy, with its one hand) and deals the river, until it's your turn or the hand ends. */
+async function advance(hand: Hand): Promise<Hand> {
   let { node, log } = hand;
   const villain = 1 - hand.hero, n = hand.holes[villain].length;
-  while (node.player === villain) {
-    const a = pickWeighted(node.actions.map((_, k) => node.strategy![k * n + hand.villainIdx]));
-    log = [...log, `Villain: ${actionLabel(node.actions[a]).toLowerCase()}`];
-    node = await nodeAt([...node.history, a]);
+  // Both hands are dealt, so neither can come on the river.
+  const held = [...hand.holes[hand.hero][hand.heroIdx], ...hand.holes[villain][hand.villainIdx]];
+  const live = (c: number) => !held.includes(solverCard(c));
+  while (node.player === villain || node.player === 2) {
+    let step: number;
+    if (node.player === 2) {
+      step = random(node.cards.filter(live));
+      log = [...log, `River: ${cardName(solverCard(step))}`];
+    } else {
+      step = pickWeighted(node.actions.map((_, k) => node.strategy![k * n + hand.villainIdx]));
+      log = [...log, `Villain: ${actionLabel(node.actions[step]).toLowerCase()}`];
+    }
+    node = await nodeAt([...node.history, step]);
   }
-  return { ...hand, node, log };
+  // An all-in called on the turn ends the tree before the river; deal one to show who wins.
+  let runout: Card | undefined;
+  if (node.player === -1 && node.board.length === 4 && !log.at(-1)?.endsWith(': fold')) {
+    const used = new Set([...held, ...node.board.map(solverCard)]);
+    runout = random(Array.from({ length: 52 }, (_, c) => c).filter((c) => !used.has(c)));
+    log = [...log, `River: ${cardName(runout)}`];
+  }
+  return { ...hand, node, log, runout };
 }
 
-/** Play river spots against the solver; every decision is graded by the EV it gives up. */
-export function RiverTrainer() {
+/** Play turn or river spots against the solver; every decision is graded by the EV it gives up. */
+export function Trainer() {
   const ranges = useStudy((s) => s.ranges);
   const [oop, setOop] = useState(ranges.find((r) => r.name === 'CO open')?.name ?? ranges[0]?.name ?? '');
   const [ip, setIp] = useState(ranges.find((r) => r.name === 'BTN open')?.name ?? ranges[0]?.name ?? '');
   const [seat, setSeat] = useState(-1);
+  const [street, setStreet] = useState(4);
+  const [size, setSize] = useState<keyof typeof SIZES>('one');
   const [hand, setHand] = useState<Hand>();
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<Progress>();
   const [error, setError] = useState<string>();
   const [session, setSession] = useState({ decisions: 0, loss: 0 });
 
@@ -62,30 +82,39 @@ export function RiverTrainer() {
     setError(undefined);
     work()
       .catch((e: Error) => setError(e.message))
-      .finally(() => setBusy(false));
+      .finally(() => {
+        setBusy(false);
+        setProgress(undefined);
+      });
   };
 
   const deal = () =>
     run(async () => {
-      const board = shuffledDeck().slice(0, 5);
-      const solved = await solveRiver({
-        oop: solverRange(findRange(ranges, oop)),
-        ip: solverRange(findRange(ranges, ip)),
-        board: board.map(solverCard),
-        pot: DEFAULTS.pot,
-        stack: DEFAULTS.stack,
-        oopBets: DEFAULTS.bets,
-        oopRaises: DEFAULTS.raises,
-        ipBets: DEFAULTS.bets,
-        ipRaises: DEFAULTS.raises,
-      });
+      const board = shuffledDeck().slice(0, street);
+      const { bets, raises } = SIZES[size];
+      setProgress({ iterations: 0, exploitability: NaN });
+      const solved = await solveSpot(
+        {
+          oop: solverRange(findRange(ranges, oop)),
+          ip: solverRange(findRange(ranges, ip)),
+          board: board.map(solverCard),
+          pot: DEFAULTS.pot,
+          stack: DEFAULTS.stack,
+          oopBets: bets,
+          oopRaises: raises,
+          ipBets: bets,
+          ipRaises: raises,
+        },
+        setProgress,
+      );
+      setProgress(undefined);
       const hero = seat >= 0 ? seat : Math.random() < 0.5 ? 0 : 1;
       const holes = solved.hands.map(holesOf);
       const heroIdx = pickWeighted(solved.root.weights[hero]);
       const mine = new Set(holes[hero][heroIdx]);
       const villainIdx = pickWeighted(solved.root.weights[1 - hero].map((w, i) => (holes[1 - hero][i].some((c) => mine.has(c)) ? 0 : w)));
       if (heroIdx < 0 || villainIdx < 0) throw new Error('A range has no hands left on this board. Try again or widen it.');
-      setHand(await villainActs({ solved, board, hero, holes, heroIdx, villainIdx, node: solved.root, log: [], decisions: [] }));
+      setHand(await advance({ solved, hero, holes, heroIdx, villainIdx, node: solved.root, log: [], decisions: [] }));
     });
 
   const choose = (a: number) =>
@@ -99,20 +128,25 @@ export function RiverTrainer() {
       const decision = { actions: node.actions, chosen: a, evs, freq: node.actions.map((_, k) => node.strategy![k * n + heroIdx]), loss };
       if (reached) setSession((s) => ({ decisions: s.decisions + 1, loss: s.loss + loss }));
       const next = await nodeAt([...node.history, a]);
-      setHand(await villainActs({ ...hand, node: next, log: [...hand.log, `You: ${actionLabel(node.actions[a]).toLowerCase()}`], decisions: [...hand.decisions, decision] }));
+      setHand(await advance({ ...hand, node: next, log: [...hand.log, `You: ${actionLabel(node.actions[a]).toLowerCase()}`], decisions: [...hand.decisions, decision] }));
     });
 
   const heroTurn = hand && hand.node.player === hand.hero;
-  const over = hand && hand.node.player < 0;
+  const over = hand && hand.node.player === -1;
   const pot = hand ? DEFAULTS.pot + hand.node.bets[0] + hand.node.bets[1] : 0;
+  const board = hand ? [...hand.node.board.map(solverCard), ...(hand.runout === undefined ? [] : [hand.runout])] : [];
   const last = hand?.decisions.at(-1);
 
   return (
     <>
       <section className={PANEL}>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-2">
           <RangeSelect label="OOP range" value={oop} onChange={setOop} />
           <RangeSelect label="IP range" value={ip} onChange={setIp} />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Segmented label="Street" value={street} options={STREETS} onChange={setStreet} />
+          <Segmented label="Bet sizes" value={size} options={Object.entries(SIZES).map(([value, s]) => ({ value: value as keyof typeof SIZES, label: s.label }))} onChange={setSize} />
           <Segmented label="Your seat" value={seat} options={SEATS} onChange={setSeat} />
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -120,11 +154,11 @@ export function RiverTrainer() {
             {hand ? 'Next hand' : 'Deal'}
           </button>
           <span className="text-[13px] text-[var(--text-muted)] tabular-nums">
-            {busy
-              ? 'Solving…'
+            {progress
+              ? `Solving… ${progress.iterations} iterations${Number.isNaN(progress.exploitability) ? '' : ` · ${((progress.exploitability / DEFAULTS.pot) * 100).toFixed(1)}% of the pot from done`}`
               : session.decisions
                 ? `${session.decisions} decisions · ${((session.loss / session.decisions / DEFAULTS.pot) * 100).toFixed(1)}% of the pot lost per decision`
-                : `Pot ${DEFAULTS.pot}, ${DEFAULTS.stack} behind; bets ${DEFAULTS.bets} of the pot, raises ${DEFAULTS.raises}.`}
+                : `Pot ${DEFAULTS.pot}, ${DEFAULTS.stack} behind; bets ${SIZES[size].bets} of the pot, raises ${SIZES[size].raises}.`}
           </span>
         </div>
         {error && <p className="mt-2 text-[15px] text-rose-400">{error}</p>}
@@ -136,9 +170,7 @@ export function RiverTrainer() {
             <Seat label={`Villain · ${PLAYER[1 - hand.hero]}`} cards={over ? hand.holes[1 - hand.hero][hand.villainIdx] : undefined} />
             <div className="flex flex-col items-center gap-1">
               <div className="flex gap-1">
-                {hand.board.map((c) => (
-                  <PlayingCard key={c} card={c} size="md" />
-                ))}
+                {[0, 1, 2, 3, 4].map((i) => (board[i] === undefined ? <PlayingCard key={i} size="md" /> : <PlayingCard key={i} card={board[i]} size="md" />))}
               </div>
               <span className="text-[13px] text-[var(--text-muted)] tabular-nums">Pot {pot}</span>
             </div>
@@ -156,7 +188,7 @@ export function RiverTrainer() {
               ))}
             </div>
           )}
-          {over && <p className="mt-3 text-center text-[17px] font-semibold">{result(hand)}</p>}
+          {over && <p className="mt-3 text-center text-[17px] font-semibold">{result(hand, board)}</p>}
           {last && <Grade d={last} />}
         </section>
       )}
@@ -216,13 +248,14 @@ function Grade({ d }: { d: Decision }) {
 }
 
 /** Who won, once the hand is over. */
-function result(hand: Hand): string {
+function result(hand: Hand, board: Card[]): string {
   const pot = DEFAULTS.pot + hand.node.bets[0] + hand.node.bets[1];
-  const last = hand.log.at(-1) ?? '';
-  if (last === 'You: fold') return `You fold. Villain takes ${pot}.`;
-  if (last === 'Villain: fold') return `Villain folds. You take ${pot}.`;
-  const mine = evaluate([...hand.holes[hand.hero][hand.heroIdx], ...hand.board]);
-  const theirs = evaluate([...hand.holes[1 - hand.hero][hand.villainIdx], ...hand.board]);
+  const called = DEFAULTS.pot + 2 * Math.min(...hand.node.bets); // a fold hands back the bet nobody called
+  const folded = hand.log.findLast((l) => l.endsWith(': fold'));
+  if (folded === 'You: fold') return `You fold. Villain takes ${called}.`;
+  if (folded === 'Villain: fold') return `Villain folds. You take ${called}.`;
+  const mine = evaluate([...hand.holes[hand.hero][hand.heroIdx], ...board]);
+  const theirs = evaluate([...hand.holes[1 - hand.hero][hand.villainIdx], ...board]);
   if (mine === theirs) return `Split pot: ${describe(mine)}.`;
   return mine > theirs ? `You win ${pot} with ${describe(mine)}.` : `Villain wins ${pot} with ${describe(theirs)}.`;
 }

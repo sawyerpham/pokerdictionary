@@ -1,41 +1,68 @@
-// Runs postflop-solver (WebAssembly) off the main thread. Holds one solved river spot at a time.
-import init, { River } from './pkg/postflop_wasm.js';
+// Runs postflop-solver (WebAssembly) off the main thread. Holds one solved spot at a time.
+import init, { Spot } from './pkg/postflop_wasm.js';
 import type { NodeInfo, Request } from './client';
 
 const ready = init();
-let river: River | undefined;
+let spot: Spot | undefined;
+let active = -1; // id of the solve in progress; a newer solve replaces it
+let stopped = false;
 
 function node(history: number[]): NodeInfo {
-  const r = river!;
-  r.go(history);
-  const player = r.player();
+  const s = spot!;
+  s.go(history);
+  const player = s.player();
+  const acting = player === 0 || player === 1;
   return {
     history,
     player,
-    actions: r.actions() ? r.actions().split(',') : [],
-    bets: [...r.bets()],
-    weights: [r.weights(0), r.weights(1)],
-    ev: [r.ev(0), r.ev(1)],
-    equity: [r.equity(0), r.equity(1)],
-    strategy: player >= 0 ? r.strategy() : undefined,
-    actionEvs: player >= 0 ? r.action_evs() : undefined,
+    actions: s.actions() ? s.actions().split(',') : [],
+    cards: player === 2 ? [...s.cards()] : [],
+    board: [...s.board()],
+    bets: [...s.bets()],
+    weights: [s.weights(0), s.weights(1)],
+    ev: [s.ev(0), s.ev(1)],
+    equity: [s.equity(0), s.equity(1)],
+    strategy: acting ? s.strategy() : undefined,
+    actionEvs: acting ? s.action_evs() : undefined,
   };
 }
 
 self.onmessage = async ({ data }: MessageEvent<Request>) => {
+  if (data.type === 'stop') {
+    stopped = true;
+    return;
+  }
   await ready;
   try {
     if (data.type === 'solve') {
-      const s = data.spot;
-      river?.free();
-      river = undefined;
+      const c = data.spot;
+      active = data.id;
+      stopped = false;
       const started = performance.now();
-      river = new River(s.oop, s.ip, s.board, s.pot, s.stack, s.oopBets, s.oopRaises, s.ipBets, s.ipRaises);
-      const exploitability = river.solve(1000, s.pot * 0.002);
-      const hands = [0, 1].map((p) => [...river!.hands(p)]);
-      postMessage({ id: data.id, result: { exploitability, ms: performance.now() - started, hands, root: node([]) } });
+      const s = new Spot(c.oop, c.ip, c.board, c.pot, c.stack, c.oopBets, c.oopRaises, c.ipBets, c.ipRaises);
+      // Close enough: 0.2% of the pot on the river, 0.5% from the turn (it has many more nodes to settle).
+      const target = c.pot * (c.board.length === 5 ? 0.002 : 0.005);
+      let exploitability = s.exploitability(), iterations = 0;
+      while (exploitability > target && iterations < 1000 && !stopped && active === data.id) {
+        s.step(iterations++);
+        if (iterations % 10 === 0) {
+          exploitability = s.exploitability();
+          postMessage({ id: data.id, progress: { iterations, exploitability } });
+          await new Promise((r) => setTimeout(r)); // let a stop or a newer solve arrive
+        }
+      }
+      if (active !== data.id) {
+        s.free();
+        throw new Error('Replaced by a newer solve');
+      }
+      active = -1;
+      s.finish();
+      spot?.free();
+      spot = s;
+      const hands = [0, 1].map((p) => [...s.hands(p)]);
+      postMessage({ id: data.id, result: { exploitability, iterations, memoryMb: s.memory_mb(), ms: performance.now() - started, hands, root: node([]) } });
     } else {
-      if (!river) throw new Error('Nothing solved yet');
+      if (!spot) throw new Error('Nothing solved yet');
       postMessage({ id: data.id, result: node(data.history) });
     }
   } catch (e) {

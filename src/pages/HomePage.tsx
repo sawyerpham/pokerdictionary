@@ -7,7 +7,7 @@ const FEATURES = [
   { tag: 'Presets', title: 'Famous styles', blurb: `${PRESETS.filter((p) => p.group !== 'Archetypes').length} pro and celebrity caricatures. Customize any of their 13 style knobs, from VPIP to tilt.`, to: '/table' },
   { tag: 'Spectate', title: 'Watch them play', blurb: 'Hand the seat to an NPC and watch the table run at up to 4× speed, hole cards up.', to: '/table' },
   { tag: 'Motion', title: 'Table animations', blurb: 'Cards dealt around the table, chips thrown in, folds mucked, shoves pushed, and pots pushed to the winner.', to: '/table' },
-  { tag: 'Study', title: 'Drills and a river solver', blurb: 'Build ranges, drill preflop opens and equity, and play river spots against a CFR solver that grades every decision.', to: '/study' },
+  { tag: 'Study', title: 'Drills and a river solver', blurb: 'Build ranges, drill preflop opens and equity, and play turn and river spots against a CFR solver that grades every decision.', to: '/study' },
   { tag: 'Tools', title: 'Equity and tracking', blurb: 'A hidden equity readout with pot odds, a hand log, session results, and a profit graph.', to: '/table' },
 ];
 

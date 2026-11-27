@@ -1,22 +1,22 @@
 /* @ts-self-types="./postflop_wasm.d.ts" */
 
-export class River {
+export class Spot {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
-        RiverFinalization.unregister(this);
+        SpotFinalization.unregister(this);
         return ptr;
     }
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_river_free(ptr, 0);
+        wasm.__wbg_spot_free(ptr, 0);
     }
     /**
      * For the acting player: EV of each action for each hand, action-major ([a0h0, a0h1, ..., a1h0, ...]).
      * @returns {Float32Array}
      */
     action_evs() {
-        const ret = wasm.river_action_evs(this.__wbg_ptr);
+        const ret = wasm.spot_action_evs(this.__wbg_ptr);
         var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -29,7 +29,7 @@ export class River {
         let deferred1_0;
         let deferred1_1;
         try {
-            const ret = wasm.river_actions(this.__wbg_ptr);
+            const ret = wasm.spot_actions(this.__wbg_ptr);
             deferred1_0 = ret[0];
             deferred1_1 = ret[1];
             return getStringFromWasm0(ret[0], ret[1]);
@@ -38,13 +38,33 @@ export class River {
         }
     }
     /**
-     * Chips each player has put in on the river so far.
+     * Chips each player has put in since the start of the spot.
      * @returns {Int32Array}
      */
     bets() {
-        const ret = wasm.river_bets(this.__wbg_ptr);
+        const ret = wasm.spot_bets(this.__wbg_ptr);
         var v1 = getArrayI32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * The board so far (4 or 5 cards).
+     * @returns {Uint8Array}
+     */
+    board() {
+        const ret = wasm.spot_board(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * At a chance node, the cards that can come.
+     * @returns {Uint8Array}
+     */
+    cards() {
+        const ret = wasm.spot_cards(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         return v1;
     }
     /**
@@ -53,7 +73,7 @@ export class River {
      * @returns {Float32Array}
      */
     equity(player) {
-        const ret = wasm.river_equity(this.__wbg_ptr, player);
+        const ret = wasm.spot_equity(this.__wbg_ptr, player);
         var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -64,19 +84,33 @@ export class River {
      * @returns {Float32Array}
      */
     ev(player) {
-        const ret = wasm.river_ev(this.__wbg_ptr, player);
+        const ret = wasm.spot_ev(this.__wbg_ptr, player);
         var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
     }
     /**
-     * Moves to the node reached by these action indices from the root.
+     * How many chips a perfect opponent could win from the current strategy, on average.
+     * @returns {number}
+     */
+    exploitability() {
+        const ret = wasm.spot_exploitability(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Stops solving and makes the results readable.
+     */
+    finish() {
+        wasm.spot_finish(this.__wbg_ptr);
+    }
+    /**
+     * Moves to the node reached from the root by these steps: action indices, or a card id at a chance node.
      * @param {Uint32Array | number[]} history
      */
     go(history) {
         const ptr0 = passArray32ToWasm0(history, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.river_go(this.__wbg_ptr, ptr0, len0);
+        wasm.spot_go(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * The player's hands, two card ids each: [a0, b0, a1, b1, ...]. Later per-hand arrays follow this order.
@@ -84,13 +118,22 @@ export class River {
      * @returns {Uint8Array}
      */
     hands(player) {
-        const ret = wasm.river_hands(this.__wbg_ptr, player);
+        const ret = wasm.spot_hands(this.__wbg_ptr, player);
         var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         return v1;
     }
     /**
-     * Builds the tree. Bet and raise sizes use the solver's syntax, e.g. "50%, 100%" and "2.5x".
+     * Memory the tree uses, in MB.
+     * @returns {number}
+     */
+    memory_mb() {
+        const ret = wasm.spot_memory_mb(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Builds the tree from a 4-card (turn) or 5-card (river) board. Each player's sizes apply on every street
+     * and use the solver's syntax, e.g. "33%, 75%" and "2.5x".
      * @param {Float32Array | number[]} oop_range
      * @param {Float32Array | number[]} ip_range
      * @param {Uint8Array | number[]} board
@@ -130,38 +173,35 @@ export class River {
             if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 4, 4); }
             throw e;
         }
-        const ret = wasm.river_new(ptr0, len0, ptr1, len1, ptr2, len2, val8, val9, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6);
+        const ret = wasm.spot_new(ptr0, len0, ptr1, len1, ptr2, len2, val8, val9, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }
         this.__wbg_ptr = ret[0];
-        RiverFinalization.register(this, this.__wbg_ptr, this);
+        SpotFinalization.register(this, this.__wbg_ptr, this);
         return this;
     }
     /**
-     * Who acts here: 0 OOP, 1 IP, -1 at the end of the hand.
+     * Who acts here: 0 OOP, 1 IP, 2 a card is dealt, -1 the hand is over.
      * @returns {number}
      */
     player() {
-        const ret = wasm.river_player(this.__wbg_ptr);
+        const ret = wasm.spot_player(this.__wbg_ptr);
         return ret;
     }
     /**
-     * Runs CFR until `iterations` or the exploitability (in chips) drops to `target`. Returns the exploitability.
-     * @param {number} iterations
-     * @param {number} target
-     * @returns {number}
+     * One CFR iteration; `iteration` counts from 0.
+     * @param {number} iteration
      */
-    solve(iterations, target) {
-        const ret = wasm.river_solve(this.__wbg_ptr, iterations, target);
-        return ret;
+    step(iteration) {
+        wasm.spot_step(this.__wbg_ptr, iteration);
     }
     /**
      * For the acting player: how often each hand takes each action, action-major.
      * @returns {Float32Array}
      */
     strategy() {
-        const ret = wasm.river_strategy(this.__wbg_ptr);
+        const ret = wasm.spot_strategy(this.__wbg_ptr);
         var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -172,13 +212,13 @@ export class River {
      * @returns {Float32Array}
      */
     weights(player) {
-        const ret = wasm.river_weights(this.__wbg_ptr, player);
+        const ret = wasm.spot_weights(this.__wbg_ptr, player);
         var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
     }
 }
-if (Symbol.dispose) River.prototype[Symbol.dispose] = River.prototype.free;
+if (Symbol.dispose) Spot.prototype[Symbol.dispose] = Spot.prototype.free;
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -205,9 +245,9 @@ function __wbg_get_imports() {
     };
 }
 
-const RiverFinalization = (typeof FinalizationRegistry === 'undefined')
+const SpotFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_river_free(ptr, 1));
+    : new FinalizationRegistry(ptr => wasm.__wbg_spot_free(ptr, 1));
 
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;

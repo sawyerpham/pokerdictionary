@@ -1,43 +1,50 @@
 import { useState } from 'react';
 import { CardSlot, DeckDialog, type Slot } from '../components/CardPicker';
-import { INPUT } from '../components/RuleControls';
+import { INPUT, Segmented } from '../components/RuleControls';
 import { shuffledDeck, type Card } from '../engine/cards';
 import { solverCard, solverRange } from '../engine/ranges';
 import { Grid } from '../guides/Preflop';
-import { actionLabel, nodeAt, solveRiver, type NodeInfo, type Solved } from '../solver/client';
+import { actionLabel, nodeAt, solveSpot, stopSolving, type NodeInfo, type Progress, type Solved } from '../solver/client';
 import { findRange, useStudy } from '../state/studyStore';
-import { actionColors, byClass, type ClassRow, DEFAULTS, holesOf, mixBackground, PLAYER, rangeMix } from './river';
+import { actionColors, byClass, cardName, DEFAULTS, holesOf, mixBackground, PLAYER, rangeMix, SIZES, STREETS, type ClassRow } from './spots';
 import { BUTTON, CardText, Field, PANEL, RangeSelect } from './ui';
 
 const randomBoard = () => shuffledDeck().slice(0, 5);
+const pct = (chips: number, pot: number) => `${((chips / pot) * 100).toFixed(2)}% of the pot`;
 
-/** Solve a heads-up river spot and walk its tree: strategy and EV for every hand at every node. */
-export function RiverSolver() {
+/** Solve a heads-up turn or river spot and walk its tree: strategy and EV for every hand at every node. */
+export function Solver() {
   const ranges = useStudy((s) => s.ranges);
+  const [street, setStreet] = useState(5);
   const [board, setBoard] = useState<Slot[]>(randomBoard);
   const [target, setTarget] = useState<number>();
   const [oop, setOop] = useState(ranges.find((r) => r.name === 'CO open')?.name ?? ranges[0]?.name ?? '');
   const [ip, setIp] = useState(ranges.find((r) => r.name === 'BTN open')?.name ?? ranges[0]?.name ?? '');
   const [pot, setPot] = useState(DEFAULTS.pot);
   const [stack, setStack] = useState(DEFAULTS.stack);
-  const [sizes, setSizes] = useState({ oopBets: DEFAULTS.bets, oopRaises: DEFAULTS.raises, ipBets: DEFAULTS.bets, ipRaises: DEFAULTS.raises });
+  const two = SIZES.two;
+  const [sizes, setSizes] = useState({ oopBets: two.bets, oopRaises: two.raises, ipBets: two.bets, ipRaises: two.raises });
   const [solved, setSolved] = useState<Solved & { pot: number }>();
   const [node, setNode] = useState<NodeInfo>();
-  const [status, setStatus] = useState<string>();
+  const [progress, setProgress] = useState<Progress>();
+  const [error, setError] = useState<string>();
   const [hover, setHover] = useState<string>();
 
-  const cards = board.filter((c): c is Card => c !== null);
+  const shown = board.slice(0, street);
+  const ready = shown.every((c) => c !== null);
   const solve = () => {
-    setStatus('Solving…');
-    solveRiver({ oop: solverRange(findRange(ranges, oop)), ip: solverRange(findRange(ranges, ip)), board: cards.map(solverCard), pot, stack, ...sizes })
+    setError(undefined);
+    setProgress({ iterations: 0, exploitability: NaN });
+    const cards = shown as Card[];
+    solveSpot({ oop: solverRange(findRange(ranges, oop)), ip: solverRange(findRange(ranges, ip)), board: cards.map(solverCard), pot, stack, ...sizes }, setProgress)
       .then((s) => {
         setSolved({ ...s, pot });
         setNode(s.root);
-        setStatus(undefined);
       })
-      .catch((e: Error) => setStatus(e.message));
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setProgress(undefined));
   };
-  const go = (history: number[]) => nodeAt(history).then(setNode, (e: Error) => setStatus(e.message));
+  const go = (history: number[]) => nodeAt(history).then(setNode, (e: Error) => setError(e.message));
 
   const setCard = (i: number, c: Slot) => setBoard((b) => b.map((x, k) => (k === i ? c : x === c ? null : x)));
   const sizeField = (key: keyof typeof sizes, label: string) => (
@@ -50,12 +57,15 @@ export function RiverSolver() {
     <>
       <section className={PANEL}>
         <div className="mb-4 flex flex-wrap items-end justify-center gap-1.5">
-          {board.map((c, i) => (
+          {shown.map((c, i) => (
             <CardSlot key={i} card={c} label={`Board card ${i + 1}`} onClick={() => setTarget(i)} />
           ))}
           <button type="button" onClick={() => setBoard(randomBoard())} className="ml-2 min-h-11 px-2 text-[15px] text-[var(--accent)]">
             Random
           </button>
+        </div>
+        <div className="mb-3 flex justify-center">
+          <Segmented label="Street" value={street} options={STREETS} onChange={setStreet} />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <RangeSelect label="OOP range" value={oop} onChange={setOop} />
@@ -72,16 +82,24 @@ export function RiverSolver() {
           {sizeField('ipRaises', 'IP raises')}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" onClick={solve} disabled={cards.length < 5 || status === 'Solving…'} className={`${BUTTON} bg-[var(--accent)] text-white`}>
-            Solve
-          </button>
-          <span className="text-[13px] text-[var(--text-muted)]">
-            {status ??
-              (solved
-                ? `Solved in ${Math.round(solved.ms)} ms · exploitability ${((solved.exploitability / solved.pot) * 100).toFixed(2)}% of the pot`
-                : 'Sizes are % of the pot for bets, ×the bet for raises, a for all-in; comma-separated.')}
+          {progress ? (
+            <button type="button" onClick={stopSolving} className={`${BUTTON} bg-[var(--bg-third)]`}>
+              Stop
+            </button>
+          ) : (
+            <button type="button" onClick={solve} disabled={!ready} className={`${BUTTON} bg-[var(--accent)] text-white`}>
+              Solve
+            </button>
+          )}
+          <span className="text-[13px] text-[var(--text-muted)] tabular-nums">
+            {progress
+              ? `Solving… ${progress.iterations} iterations${Number.isNaN(progress.exploitability) ? '' : ` · ${pct(progress.exploitability, pot)} exploitable`}`
+              : solved
+                ? `Solved in ${(solved.ms / 1000).toFixed(1)} s · ${solved.iterations} iterations · ${Math.round(solved.memoryMb)} MB · ${pct(solved.exploitability, solved.pot)} exploitable`
+                : 'Sizes are % of the pot for bets, ×the bet for raises, a for all-in; comma-separated. They apply on every street.'}
           </span>
         </div>
+        {error && <p className="mt-2 text-[15px] text-rose-400">{error}</p>}
       </section>
 
       {solved && node && <Tree solved={solved} node={node} go={go} hover={hover} setHover={setHover} />}
@@ -89,11 +107,11 @@ export function RiverSolver() {
       {target !== undefined && (
         <DeckDialog
           title={`Board card ${target + 1}`}
-          used={new Set(cards)}
+          used={new Set(shown.filter((c): c is Card => c !== null))}
           current={board[target]}
           onPick={(c) => {
             setCard(target, c);
-            const empty = board.findIndex((x, i) => i > target && x === null);
+            const empty = shown.findIndex((x, i) => i > target && x === null);
             setTarget(empty >= 0 ? empty : undefined);
           }}
           onRemove={() => {
@@ -108,15 +126,21 @@ export function RiverSolver() {
 }
 
 function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: number }; node: NodeInfo; go: (h: number[]) => void; hover?: string; setHover: (h?: string) => void }) {
-  const [path, setPath] = useState<string[]>([]); // labels of the actions taken, for the breadcrumb
+  const [path, setPath] = useState<string[]>([]); // a label for each step taken, for the breadcrumb
+  const [picking, setPicking] = useState(false);
   const labels = path.slice(0, node.history.length);
   const player = node.player;
+  const acting = player === 0 || player === 1;
   const pot = solved.pot + node.bets[0] + node.bets[1];
   const colors = actionColors(node.actions);
-  const holes = holesOf(solved.hands[Math.max(0, player)]);
-  const rows: Map<string, ClassRow> = player >= 0 ? byClass(node, holes, player) : new Map();
+  const rows: Map<string, ClassRow> = acting ? byClass(node, holesOf(solved.hands[player]), player) : new Map();
   const mix = rangeMix(node);
   const detail = hover ? rows.get(hover) : undefined;
+  const take = (step: number, label: string) => {
+    setPath([...labels, label]);
+    go([...node.history, step]);
+  };
+  const dealRiver = (c: Card) => take(solverCard(c), `River ${cardName(c)}`);
 
   return (
     <section className={`${PANEL} mt-4`}>
@@ -128,28 +152,57 @@ function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: n
           <span key={k} className="flex items-center gap-1">
             <span className="text-[var(--text-muted)]">›</span>
             <button type="button" onClick={() => go(node.history.slice(0, k + 1))} className="min-h-11 px-1 text-[var(--accent)]">
-              {PLAYER[k % 2]} {l}
+              {l}
             </button>
           </span>
         ))}
       </nav>
+      <p className="mb-3 text-[15px] text-[var(--text-muted)]">
+        Board{' '}
+        {node.board.map((c) => (
+          <span key={c} className="mr-1 font-semibold">
+            <CardText card={solverCard(c)} />
+          </span>
+        ))}{' '}
+        · pot {pot}
+      </p>
 
-      {player < 0 ? (
-        <p className="text-[17px]">Hand over. Pot {pot}.</p>
-      ) : (
+      {player === -1 && <p className="text-[17px]">Hand over. Pot {pot}.</p>}
+      {player === 2 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-[17px]">The river is dealt.</p>
+          <button type="button" onClick={() => setPicking(true)} className={`${BUTTON} bg-[var(--accent)] text-white`}>
+            Pick river
+          </button>
+          <button type="button" onClick={() => dealRiver(solverCard(node.cards[Math.floor(Math.random() * node.cards.length)]))} className="min-h-11 px-2 text-[15px] text-[var(--accent)]">
+            Random
+          </button>
+          {picking && (
+            <DeckDialog
+              title="River card"
+              used={new Set(Array.from({ length: 52 }, (_, c) => c).filter((c) => !node.cards.includes(solverCard(c))))}
+              current={null}
+              onPick={(c) => {
+                setPicking(false);
+                dealRiver(c);
+              }}
+              onRemove={() => {}}
+              onClose={() => setPicking(false)}
+            />
+          )}
+        </div>
+      )}
+      {acting && (
         <>
           <p className="mb-2 text-[17px]">
-            <strong>{PLAYER[player]}</strong> to act · pot {pot}
+            <strong>{PLAYER[player]}</strong> to act
           </p>
           <div className="mb-4 flex flex-wrap gap-2">
             {node.actions.map((a, i) => (
               <button
                 key={a}
                 type="button"
-                onClick={() => {
-                  setPath([...labels, actionLabel(a)]);
-                  go([...node.history, i]);
-                }}
+                onClick={() => take(i, `${PLAYER[player]} ${actionLabel(a)}`)}
                 className="flex min-h-11 items-center gap-2 rounded-full bg-[var(--bg-third)] px-4 text-[15px] hover:brightness-125"
               >
                 <span className="h-3 w-3 rounded-full" style={{ background: colors[i] }} />

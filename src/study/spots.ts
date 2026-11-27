@@ -1,12 +1,26 @@
-// Turning solver output into what the river tools show.
-import { handName, type Card } from '../engine/cards';
+// Turning solver output into what the solver and trainer show.
+import { handName, rankLabel, suitOf, SUITS, type Card } from '../engine/cards';
 import { solverCard } from '../engine/ranges';
 import type { NodeInfo } from '../solver/client';
 
 export const PLAYER = ['OOP', 'IP'];
 
-/** Default tree: two bet sizes, raises to 2.5x. Pot and stack in chips. */
-export const DEFAULTS = { pot: 100, stack: 400, bets: '50%, 100%', raises: '2.5x' };
+/** Default spot, in chips. */
+export const DEFAULTS = { pot: 100, stack: 400 };
+
+/** Bet sizes on every street. One size solves a turn in about a second, two in several. */
+export const SIZES = {
+  one: { label: '1 size', bets: '66%', raises: '2.5x' },
+  two: { label: '2 sizes', bets: '33%, 75%', raises: '2.5x' },
+};
+
+export const STREETS = [
+  { value: 4, label: 'Turn' },
+  { value: 5, label: 'River' },
+];
+
+/** "K♠" as plain text. */
+export const cardName = (c: Card) => `${rankLabel(c)}${SUITS[suitOf(c)]}`;
 
 /** Fold blue, check and call green, bets and raises red, darker for bigger. */
 export function actionColors(actions: string[]): string[] {

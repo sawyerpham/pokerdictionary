@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 
-export class River {
+export class Spot {
     free(): void;
     [Symbol.dispose](): void;
     /**
@@ -13,9 +13,17 @@ export class River {
      */
     actions(): string;
     /**
-     * Chips each player has put in on the river so far.
+     * Chips each player has put in since the start of the spot.
      */
     bets(): Int32Array;
+    /**
+     * The board so far (4 or 5 cards).
+     */
+    board(): Uint8Array;
+    /**
+     * At a chance node, the cards that can come.
+     */
+    cards(): Uint8Array;
     /**
      * Showdown equity of each hand against the other player's range at this node.
      */
@@ -25,7 +33,15 @@ export class River {
      */
     ev(player: number): Float32Array;
     /**
-     * Moves to the node reached by these action indices from the root.
+     * How many chips a perfect opponent could win from the current strategy, on average.
+     */
+    exploitability(): number;
+    /**
+     * Stops solving and makes the results readable.
+     */
+    finish(): void;
+    /**
+     * Moves to the node reached from the root by these steps: action indices, or a card id at a chance node.
      */
     go(history: Uint32Array | number[]): void;
     /**
@@ -33,17 +49,22 @@ export class River {
      */
     hands(player: number): Uint8Array;
     /**
-     * Builds the tree. Bet and raise sizes use the solver's syntax, e.g. "50%, 100%" and "2.5x".
+     * Memory the tree uses, in MB.
+     */
+    memory_mb(): number;
+    /**
+     * Builds the tree from a 4-card (turn) or 5-card (river) board. Each player's sizes apply on every street
+     * and use the solver's syntax, e.g. "33%, 75%" and "2.5x".
      */
     constructor(oop_range: Float32Array | number[], ip_range: Float32Array | number[], board: Uint8Array | number[], pot: number, stack: number, oop_bets: string, oop_raises: string, ip_bets: string, ip_raises: string);
     /**
-     * Who acts here: 0 OOP, 1 IP, -1 at the end of the hand.
+     * Who acts here: 0 OOP, 1 IP, 2 a card is dealt, -1 the hand is over.
      */
     player(): number;
     /**
-     * Runs CFR until `iterations` or the exploitability (in chips) drops to `target`. Returns the exploitability.
+     * One CFR iteration; `iteration` counts from 0.
      */
-    solve(iterations: number, target: number): number;
+    step(iteration: number): void;
     /**
      * For the acting player: how often each hand takes each action, action-major.
      */
@@ -58,19 +79,24 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly __wbg_river_free: (a: number, b: number) => void;
-    readonly river_action_evs: (a: number) => [number, number];
-    readonly river_actions: (a: number) => [number, number];
-    readonly river_bets: (a: number) => [number, number];
-    readonly river_equity: (a: number, b: number) => [number, number];
-    readonly river_ev: (a: number, b: number) => [number, number];
-    readonly river_go: (a: number, b: number, c: number) => void;
-    readonly river_hands: (a: number, b: number) => [number, number];
-    readonly river_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number) => [number, number, number];
-    readonly river_player: (a: number) => number;
-    readonly river_solve: (a: number, b: number, c: number) => number;
-    readonly river_strategy: (a: number) => [number, number];
-    readonly river_weights: (a: number, b: number) => [number, number];
+    readonly __wbg_spot_free: (a: number, b: number) => void;
+    readonly spot_action_evs: (a: number) => [number, number];
+    readonly spot_actions: (a: number) => [number, number];
+    readonly spot_bets: (a: number) => [number, number];
+    readonly spot_board: (a: number) => [number, number];
+    readonly spot_cards: (a: number) => [number, number];
+    readonly spot_equity: (a: number, b: number) => [number, number];
+    readonly spot_ev: (a: number, b: number) => [number, number];
+    readonly spot_exploitability: (a: number) => number;
+    readonly spot_finish: (a: number) => void;
+    readonly spot_go: (a: number, b: number, c: number) => void;
+    readonly spot_hands: (a: number, b: number) => [number, number];
+    readonly spot_memory_mb: (a: number) => number;
+    readonly spot_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number) => [number, number, number];
+    readonly spot_player: (a: number) => number;
+    readonly spot_step: (a: number, b: number) => void;
+    readonly spot_strategy: (a: number) => [number, number];
+    readonly spot_weights: (a: number, b: number) => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
