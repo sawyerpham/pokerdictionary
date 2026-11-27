@@ -9,6 +9,7 @@ import { betSizingGuide } from './BetSizing';
 import { readingGuide } from './ReadingOpponents';
 import { tournamentGuide } from './TournamentVsCash';
 import { homeGamesGuide } from './HomeGames';
+import { practiceGuide } from './Practice';
 
 export interface GuideSection {
   /** Anchor id of the h2 this entry links to. */
@@ -29,7 +30,7 @@ export interface Guide {
 /** Sidebar shelves by level, in reading order. */
 export const SHELVES: { title: string; items: Guide[] }[] = [
   { title: 'Beginner', items: [overviewGuide, handRankingsGuide, preflopGuide, homeGamesGuide] },
-  { title: 'Intermediate', items: [fundamentalsGuide, positionsGuide, tournamentGuide, readingGuide] },
+  { title: 'Intermediate', items: [fundamentalsGuide, positionsGuide, tournamentGuide, readingGuide, practiceGuide] },
   { title: 'Advanced', items: [bluffingGuide, betSizingGuide] },
 ];
 
