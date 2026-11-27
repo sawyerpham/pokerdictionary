@@ -23,6 +23,8 @@ from pydantic import BaseModel
 # "admin" (set by an owner or admin on the Admin page; manages account types), "premium" (the AI coach) and
 # "default". Each type includes everything below it.
 DIST = Path(__file__).parent / 'dist'
+# Computed study data too big for git (flop libraries, board reports), copied to the server by deploy/upload-data.sh.
+STUDY = Path(os.environ.get('STUDY_DATA', '/study'))
 DB = os.environ.get('DB_PATH', str(Path(__file__).parent / 'poker.db'))
 URL = os.environ.get('PUBLIC_URL', 'https://poker.sawyerpham.dev').rstrip('/')
 GOOGLE_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
@@ -128,7 +130,11 @@ async def same_origin_writes(request: Request, call_next):
     origin = request.headers.get('origin')
     if request.method not in ('GET', 'HEAD', 'OPTIONS') and origin and origin != URL and not DEV:
         return Response('Cross-site request refused', status_code=403)
-    return await call_next(request)
+    response = await call_next(request)
+    # Cross-origin isolation: lets the in-browser solver share memory between workers and use every core.
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Cross-Origin-Embedder-Policy'] = 'credentialless'
+    return response
 
 
 @app.get('/api/health')
@@ -417,8 +423,13 @@ def coach(body: CoachRequest, request: Request):
         con.execute('INSERT INTO coach_uses VALUES (?, ?)', (user['id'], int(time.time())))
     return {'reply': reply, 'left': max(0, COACH_DAILY - used - 1) if role_of(user) == 'premium' else None}
 
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+for name in ('flops', 'reports'):
+    if (STUDY / name).is_dir():
+        app.mount(f'/{name}', StaticFiles(directory=STUDY / name), name=name)
+
 if DIST.exists():
-    from fastapi.staticfiles import StaticFiles
 
     app.mount('/assets', StaticFiles(directory=DIST / 'assets'), name='assets')
 
@@ -427,4 +438,6 @@ if DIST.exists():
         f = (DIST / path).resolve()
         if path and f.is_file() and DIST.resolve() in f.parents:
             return FileResponse(f)
+        if '.' in path.rsplit('/', 1)[-1]:
+            raise HTTPException(404, 'Not found')  # a missing file, not a page
         return FileResponse(DIST / 'index.html')  # client-side routes like /table

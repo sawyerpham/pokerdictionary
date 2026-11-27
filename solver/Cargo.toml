@@ -1,4 +1,4 @@
-# WebAssembly wrapper around b-inary/postflop-solver for heads-up river spots.
+# WebAssembly wrapper around b-inary/postflop-solver for heads-up flop, turn and river spots.
 # Licensed AGPL-3.0-or-later because the solver is (the rest of this repo is MIT).
 [package]
 name = "postflop-wasm"
@@ -10,10 +10,15 @@ publish = false
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+# Every core, through Web Workers sharing memory (needs a cross-origin isolated page and a nightly build).
+threads = ["postflop-solver/rayon", "dep:wasm-bindgen-rayon"]
+
 [dependencies]
-# Single-threaded (no rayon) and no file I/O: the browser runs it inside a Web Worker.
+# No file I/O: the browser runs it inside a Web Worker. Single-threaded unless built with `threads`.
 postflop-solver = { git = "https://github.com/b-inary/postflop-solver", rev = "9d1509fe5077d019825f833eed04b16d342dfda1", default-features = false }
 wasm-bindgen = "0.2"
+wasm-bindgen-rayon = { version = "1.3", optional = true }
 
 [profile.release]
 lto = true

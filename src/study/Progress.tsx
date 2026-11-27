@@ -62,14 +62,15 @@ function Tool({ title, to, count, children }: { title: string; to: string; count
 
 /** Where you're improving and where you lose the most, from every drill answer and trainer decision. */
 export function Progress() {
-  const { preflop, equity, trainer, pushfold, clear } = useProgress();
+  const { preflop, equity, trainer, pushfold, potodds, facing, quiz, daily, clear } = useProgress();
   const accuracy = (xs: { right: boolean }[]) => mean(xs.map((x) => (x.right ? 1 : 0)));
   const lately = <T,>(xs: T[], f: (xs: T[]) => number) => (xs.length > RECENT ? f(xs.slice(-RECENT)) - f(xs.slice(0, -RECENT)) : undefined);
   const trend = (d: number | undefined, unit: string, lowerIsBetter = false) =>
     d === undefined ? `last ${RECENT} vs before: needs more answers` : `last ${RECENT} vs before: ${d === 0 ? 'same' : `${(lowerIsBetter ? d < 0 : d > 0) ? 'better' : 'worse'} by ${Math.abs(d).toFixed(unit === 'pts' ? 1 : 0)}${unit}`}`;
 
   const STREET = ['', '', '', 'Flop', 'Turn', 'River'];
-  const habit: Record<string, string> = { Fold: 'Folding', Check: 'Checking', Call: 'Calling', Bet: 'Betting', Raise: 'Raising', AllIn: 'Going all-in' };
+  const NODE = ['vs open', 'vs 3-bet', 'vs 4-bet', 'vs all-in'];
+  const habit: Record<string, string> = { Fold: 'Folding', Check: 'Checking', Call: 'Calling', Bet: 'Betting', Raise: 'Raising', AllIn: 'Going all-in', '3-bet': '3-betting', '4-bet': '4-betting', 'All-in': 'Going all-in' };
   const mistakes = trainer.filter((d) => d.loss >= 0.5);
 
   return (
@@ -162,7 +163,78 @@ export function Progress() {
         />
       </Tool>
 
-      {preflop.length + equity.length + trainer.length + pushfold.length > 0 && (
+      <Tool title="Facing a raise" to="/study/facing" count={facing.length}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Stat label="Answers" value={String(facing.length)} />
+          <Stat label="Right" value={pct(accuracy(facing))} note={trend(lately(facing, accuracy) !== undefined ? lately(facing, accuracy)! * 100 : undefined, ' pts')} />
+          <Stat label="Given up" value={`${facing.reduce((a, r) => a + r.loss, 0).toFixed(1)} bb`} />
+        </div>
+        <Bars
+          title="Right, by spot (worst first)"
+          max={1}
+          rows={groups(facing, (r) => `${r.seat ?? (r.node % 2 === 0 ? r.spot.split('-')[1] : r.spot.split('-')[0])} ${NODE[r.node]}`, 3)
+            .map(([spot, rs]) => ({ label: spot, value: accuracy(rs), text: pct(accuracy(rs)), detail: `${spot}: ${rs.filter((r) => r.right).length} of ${rs.length} right` }))
+            .sort((a, b) => a.value - b.value)}
+        />
+        <Bars
+          title="Costliest habits (total bb given up)"
+          max={Math.max(0.1, ...groups(facing.filter((r) => !r.right), (r) => `${r.chose}>${r.best}`).map(([, rs]) => rs.reduce((a, r) => a + r.loss, 0)))}
+          rows={groups(facing.filter((r) => !r.right), (r) => `${r.chose}>${r.best}`)
+            .map(([, rs]) => ({ rs, total: rs.reduce((a, r) => a + r.loss, 0) }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 4)
+            .map(({ rs, total }) => ({
+              label: `${habit[rs[0].chose] ?? rs[0].chose}, ${rs[0].best.toLowerCase()} was best`,
+              value: total,
+              text: `${total.toFixed(1)} bb`,
+              detail: `${rs.length} times`,
+            }))}
+        />
+      </Tool>
+
+      <Tool title="Pot odds" to="/study/potodds" count={potodds.length}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Stat label="Answers" value={String(potodds.length)} />
+          <Stat label="Right" value={pct(accuracy(potodds))} note={trend(lately(potodds, accuracy) !== undefined ? lately(potodds, accuracy)! * 100 : undefined, ' pts')} />
+          <Stat label="Given up" value={`${potodds.reduce((a, r) => a + r.loss, 0).toFixed(1)} bb`} />
+        </div>
+        <Bars
+          title="Right, by street (worst first)"
+          max={1}
+          rows={groups(potodds, (r) => STREET[r.street])
+            .map(([street, rs]) => ({ label: street, value: accuracy(rs), text: pct(accuracy(rs)), detail: `${street}: ${rs.filter((r) => r.right).length} of ${rs.length} right` }))
+            .sort((a, b) => a.value - b.value)}
+        />
+      </Tool>
+
+      <Tool title="Daily flop" to="/study/daily" count={daily.length}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Stat label="Days played" value={String(daily.length)} />
+          <Stat label="Lost per puzzle" value={`${mean(daily.map((d) => d.loss)).toFixed(1)}%`} note="of the pot" />
+          <Stat label="Best play" value={pct(mean(daily.map((d) => (d.loss < 0.5 ? 1 : 0))))} />
+        </div>
+      </Tool>
+
+      <Tool title="Range quiz" to="/study/quiz" count={quiz.length}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Stat label="Charts painted" value={String(quiz.length)} />
+          <Stat label="Average score" value={pct(mean(quiz.map((q) => q.score)))} note={trend(lately(quiz, (xs) => mean(xs.map((q) => q.score))) !== undefined ? lately(quiz, (xs) => mean(xs.map((q) => q.score)))! * 100 : undefined, ' pts')} />
+        </div>
+        <Bars
+          title="Your best score on each chart (worst first)"
+          max={1}
+          rows={groups(quiz, (q) => q.chart)
+            .map(([chart, qs]) => {
+              const best = Math.max(...qs.map((q) => q.score));
+              const label = chart.startsWith('open-') ? `${chart.slice(5)} open` : `${chart.split('-')[2]} vs ${chart.split('-')[1]}: ${chart.startsWith('3bet') ? '3-bet' : 'play'}`;
+              return { label, value: best, text: pct(best), detail: `${label}: ${qs.length} tries` };
+            })
+            .sort((a, b) => a.value - b.value)
+            .slice(0, 8)}
+        />
+      </Tool>
+
+      {preflop.length + equity.length + trainer.length + pushfold.length + potodds.length + facing.length + quiz.length + daily.length > 0 && (
         <button
           type="button"
           onClick={() => confirm('Clear all your progress? This can’t be undone.') && clear()}

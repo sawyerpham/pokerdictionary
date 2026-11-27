@@ -48,7 +48,7 @@ export class Spot {
         return v1;
     }
     /**
-     * The board so far (4 or 5 cards).
+     * The board so far (3 to 5 cards).
      * @returns {Uint8Array}
      */
     board() {
@@ -124,6 +124,29 @@ export class Spot {
         return v1;
     }
     /**
+     * Fixes the acting player's strategy at the node reached by `history` (action-major, like `strategy()`), so
+     * solving again shows how the other player should exploit it. Call before solving.
+     * @param {Uint32Array | number[]} history
+     * @param {Float32Array | number[]} strategy
+     */
+    lock(history, strategy) {
+        let ptr0, len0, ptr1, len1;
+        try {
+            ptr0 = passArray32ToWasm0(history, wasm.__wbindgen_malloc);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = passArrayF32ToWasm0(strategy, wasm.__wbindgen_malloc);
+            len1 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr1) { wasm.__wbindgen_free(ptr1, len1 * 4, 4); }
+            if (ptr0) { wasm.__wbindgen_free(ptr0, len0 * 4, 4); }
+            throw e;
+        }
+        const ret = wasm.spot_lock(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
      * Memory the tree uses, in MB.
      * @returns {number}
      */
@@ -132,8 +155,8 @@ export class Spot {
         return ret;
     }
     /**
-     * Builds the tree from a 4-card (turn) or 5-card (river) board. Each player's sizes apply on every street
-     * and use the solver's syntax, e.g. "33%, 75%" and "2.5x".
+     * Builds the tree from a 3-card (flop), 4-card (turn) or 5-card (river) board. Sizes use the solver's syntax,
+     * e.g. "33%, 75%" and "2.5x"; give one per street as "flop|turn|river" (a missing street repeats the last).
      * @param {Float32Array | number[]} oop_range
      * @param {Float32Array | number[]} ip_range
      * @param {Uint8Array | number[]} board

@@ -25,7 +25,8 @@ export function PrivacyPage() {
       <Section title="Without an account">
         <p>
           Everything you save (ranges, drill progress, settings, custom players) stays in your own browser. The poker engine and the solver run in
-          your browser too, so your hands and spots aren’t sent anywhere.
+          your browser too, so your hands and spots aren’t sent anywhere. Hand histories you paste into the hand history tool are read in your
+          browser and never uploaded.
         </p>
         <p>
           Like any website, the server sees your IP address when it sends you a page. It’s used to deliver the site and, for sign-in emails, to limit

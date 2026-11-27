@@ -5,7 +5,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-os.environ.update(DB_PATH=str(Path(tempfile.mkdtemp()) / 'check.db'), DEV='1', PUBLIC_URL='http://testserver',
+study = Path(tempfile.mkdtemp())
+(study / 'flops').mkdir()
+(study / 'flops' / 'index.json').write_text('[]')
+os.environ.update(DB_PATH=str(Path(tempfile.mkdtemp()) / 'check.db'), DEV='1', PUBLIC_URL='http://testserver', STUDY_DATA=str(study),
                   OWNER_EMAILS='boss@example.com', DEEPSEEK_API_KEY='test', COACH_DAILY='2')
 sys.path.insert(0, str(Path(__file__).parent))
 import app as server  # noqa: E402
@@ -32,6 +35,12 @@ def sign_in(client: TestClient, email: str, next_path: str = '/study') -> None:
 
 
 ok(web.get('/api/me').status_code == 401, 'signed out at first')
+# Every response is cross-origin isolated, so the in-browser solver can use every core.
+h = web.get('/api/health').headers
+ok(h['cross-origin-opener-policy'] == 'same-origin' and h['cross-origin-embedder-policy'] == 'credentialless', 'isolation headers')
+# Study data from the server folder: served when there, a 404 (not the app page) when not.
+ok(web.get('/flops/index.json').json() == [], 'flop library index served')
+ok(web.get('/flops/missing.json').status_code == 404, 'missing library file is a 404')
 ok(web.get('/api/auth/providers').json() == {'google': False, 'email': True, 'coach': True}, 'providers')
 ok(web.post('/api/auth/email', json={'email': 'not-an-email'}).status_code == 400, 'bad address refused')
 

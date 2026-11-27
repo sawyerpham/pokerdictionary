@@ -11,8 +11,15 @@ import { BUTTON, CardText, Field, PANEL, RangeSelect } from './ui';
 
 const randomBoard = () => shuffledDeck().slice(0, 5);
 const pct = (chips: number, pot: number) => `${((chips / pot) * 100).toFixed(2)}% of the pot`;
+const SOLVER_STREETS = [{ value: 3, label: 'Flop' }, ...STREETS];
+const CARD_NAME = ['', '', '', 'turn', 'river'];
+interface Lock {
+  history: number[];
+  strategy: Float32Array;
+  label: string;
+}
 
-/** Solve a heads-up turn or river spot and walk its tree: strategy and EV for every hand at every node. */
+/** Solve a heads-up flop, turn or river spot and walk its tree: strategy and EV for every hand at every node. */
 export function Solver() {
   const ranges = useStudy((s) => s.ranges);
   const [street, setStreet] = useState(5);
@@ -29,17 +36,21 @@ export function Solver() {
   const [progress, setProgress] = useState<Progress>();
   const [error, setError] = useState<string>();
   const [hover, setHover] = useState<string>();
+  const [locks, setLocks] = useState<Lock[]>([]);
 
   const shown = board.slice(0, street);
   const ready = shown.every((c) => c !== null);
-  const solve = () => {
+  /** Solves with `withLocks`, then opens the node at `at` (the root by default). */
+  const solve = (withLocks: Lock[] = locks, at: number[] = []) => {
     setError(undefined);
+    setLocks(withLocks);
     setProgress({ iterations: 0, exploitability: NaN });
     const cards = shown as Card[];
-    solveSpot({ oop: solverRange(findRange(ranges, oop)), ip: solverRange(findRange(ranges, ip)), board: cards.map(solverCard), pot, stack, ...sizes }, setProgress)
-      .then((s) => {
+    const spot = { oop: solverRange(findRange(ranges, oop)), ip: solverRange(findRange(ranges, ip)), board: cards.map(solverCard), pot, stack, ...sizes, locks: withLocks };
+    solveSpot(spot, setProgress)
+      .then(async (s) => {
         setSolved({ ...s, pot });
-        setNode(s.root);
+        setNode(at.length ? await nodeAt(at) : s.root);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setProgress(undefined));
@@ -65,7 +76,7 @@ export function Solver() {
           </button>
         </div>
         <div className="mb-3 flex justify-center">
-          <Segmented label="Street" value={street} options={STREETS} onChange={setStreet} />
+          <Segmented label="Street" value={street} options={SOLVER_STREETS} onChange={setStreet} />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <RangeSelect label="OOP range" value={oop} onChange={setOop} />
@@ -87,7 +98,7 @@ export function Solver() {
               Stop
             </button>
           ) : (
-            <button type="button" onClick={solve} disabled={!ready} className={`${BUTTON} bg-[var(--accent)] text-white`}>
+            <button type="button" onClick={() => solve()} disabled={!ready} className={`${BUTTON} bg-[var(--accent)] text-white`}>
               Solve
             </button>
           )}
@@ -95,14 +106,32 @@ export function Solver() {
             {progress
               ? `Solving… ${progress.iterations} iterations${Number.isNaN(progress.exploitability) ? '' : ` · ${pct(progress.exploitability, pot)} exploitable`}`
               : solved
-                ? `Solved in ${(solved.ms / 1000).toFixed(1)} s · ${solved.iterations} iterations · ${Math.round(solved.memoryMb)} MB · ${pct(solved.exploitability, solved.pot)} exploitable`
-                : 'Sizes are % of the pot for bets, ×the bet for raises, a for all-in; comma-separated. They apply on every street.'}
+                ? `Solved in ${(solved.ms / 1000).toFixed(1)} s on ${solved.threads} core${solved.threads === 1 ? '' : 's'} · ${solved.iterations} iterations · ${Math.round(solved.memoryMb)} MB · ${pct(solved.exploitability, solved.pot)} exploitable`
+                : `Sizes are % of the pot for bets, ×the bet for raises, a for all-in; comma-separated. They apply on every street.${street === 3 ? ' A flop takes a few minutes in the browser and needs a lean tree: one or two sizes.' : ''}`}
           </span>
         </div>
+        {locks.length > 0 && (
+          <p className="mt-2 text-[15px]">
+            Locked: {locks.map((l) => l.label).join('; ')}{' '}
+            <button type="button" onClick={() => setLocks([])} className="min-h-11 px-2 text-[var(--accent)]">
+              Clear (solve again to apply)
+            </button>
+          </p>
+        )}
         {error && <p className="mt-2 text-[15px] text-rose-400">{error}</p>}
       </section>
 
-      {solved && node && <Tree solved={solved} node={node} go={go} hover={hover} setHover={setHover} />}
+      {solved && node && (
+        <Tree
+          solved={solved}
+          node={node}
+          go={go}
+          hover={hover}
+          setHover={setHover}
+          busy={!!progress}
+          lock={(l) => solve([...locks.filter((x) => x.history.join() !== l.history.join()), l], l.history)}
+        />
+      )}
 
       {target !== undefined && (
         <DeckDialog
@@ -125,7 +154,23 @@ export function Solver() {
   );
 }
 
-function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: number }; node: NodeInfo; go: (h: number[]) => void; hover?: string; setHover: (h?: string) => void }) {
+function Tree({
+  solved,
+  node,
+  go,
+  hover,
+  setHover,
+  busy,
+  lock,
+}: {
+  solved: Solved & { pot: number };
+  node: NodeInfo;
+  go: (h: number[]) => void;
+  hover?: string;
+  setHover: (h?: string) => void;
+  busy: boolean;
+  lock: (l: Lock) => void;
+}) {
   const [path, setPath] = useState<string[]>([]); // a label for each step taken, for the breadcrumb
   const [picking, setPicking] = useState(false);
   const labels = path.slice(0, node.history.length);
@@ -140,7 +185,8 @@ function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: n
     setPath([...labels, label]);
     go([...node.history, step]);
   };
-  const dealRiver = (c: Card) => take(solverCard(c), `River ${cardName(c)}`);
+  const next = CARD_NAME[node.board.length];
+  const dealRiver = (c: Card) => take(solverCard(c), `${next[0].toUpperCase()}${next.slice(1)} ${cardName(c)}`);
 
   return (
     <section className={`${PANEL} mt-4`}>
@@ -170,16 +216,16 @@ function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: n
       {player === -1 && <p className="text-[17px]">Hand over. Pot {pot}.</p>}
       {player === 2 && (
         <div className="flex flex-wrap items-center gap-3">
-          <p className="text-[17px]">The river is dealt.</p>
+          <p className="text-[17px]">The {next} is dealt.</p>
           <button type="button" onClick={() => setPicking(true)} className={`${BUTTON} bg-[var(--accent)] text-white`}>
-            Pick river
+            Pick {next}
           </button>
           <button type="button" onClick={() => dealRiver(solverCard(node.cards[Math.floor(Math.random() * node.cards.length)]))} className="min-h-11 px-2 text-[15px] text-[var(--accent)]">
             Random
           </button>
           {picking && (
             <DeckDialog
-              title="River card"
+              title={`${next[0].toUpperCase()}${next.slice(1)} card`}
               used={new Set(Array.from({ length: 52 }, (_, c) => c).filter((c) => !node.cards.includes(solverCard(c))))}
               current={null}
               onPick={(c) => {
@@ -227,6 +273,7 @@ function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: n
             }}
           />
           <p className="text-footnote mt-2 text-[var(--text-muted)]">Stripes show how often each hand takes each action; the number is its EV in chips.</p>
+          <LockPanel node={node} label={labels.at(-1)} busy={busy} lock={lock} />
           {detail && (
             <table className="mt-3 w-full text-[13px] tabular-nums">
               <thead className="text-[var(--text-muted)]">
@@ -260,5 +307,42 @@ function Tree({ solved, node, go, hover, setHover }: { solved: Solved & { pot: n
         </>
       )}
     </section>
+  );
+}
+
+/** "What if they do this more?": shift every hand's strategy at this node toward one action, then solve again. */
+function LockPanel({ node, label, busy, lock }: { node: NodeInfo; label?: string; busy: boolean; lock: (l: Lock) => void }) {
+  const [action, setAction] = useState(0);
+  const [more, setMore] = useState(25);
+  const who = PLAYER[node.player];
+  const apply = () => {
+    const n = node.strategy!.length / node.actions.length, x = more / 100;
+    const strategy = node.strategy!.map((v, k) => v * (1 - x) + (Math.floor(k / n) === action ? x : 0));
+    lock({ history: node.history, strategy, label: `${who} ${actionLabel(node.actions[action]).toLowerCase()} ${more}% more${label ? ` after ${label}` : ' at the start'}` });
+  };
+  return (
+    <details className="mt-4 rounded-[10px] bg-[var(--bg-third)]/50 p-3">
+      <summary className="cursor-pointer text-[15px] font-semibold">Lock this spot: what if {who} plays differently?</summary>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-[15px]">
+        <select value={action} onChange={(e) => setAction(Number(e.target.value))} className="min-h-11 rounded-[10px] bg-[var(--bg-third)] px-3">
+          {node.actions.map((a, k) => (
+            <option key={a} value={k}>
+              {actionLabel(a)}
+            </option>
+          ))}
+        </select>
+        <label className="flex min-w-48 flex-1 items-center gap-2">
+          <span className="whitespace-nowrap tabular-nums">{more}% more</span>
+          <input type="range" min={5} max={100} step={5} value={more} onChange={(e) => setMore(Number(e.target.value))} className="w-full accent-[var(--accent)]" />
+        </label>
+        <button type="button" disabled={busy} onClick={apply} className={`${BUTTON} bg-[var(--accent)] text-white`}>
+          Solve with this lock
+        </button>
+      </div>
+      <p className="text-footnote mt-2 text-[var(--text-muted)]">
+        Every hand here moves that share of its strategy to the action you pick, and stays there. Solving again shows how the other player should
+        adapt, and what the change costs {who}.
+      </p>
+    </details>
   );
 }

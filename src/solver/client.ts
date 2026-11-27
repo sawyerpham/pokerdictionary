@@ -3,13 +3,14 @@
 export interface SpotConfig {
   oop: Float32Array; // 1326 weights each, from solverRange()
   ip: Float32Array;
-  board: number[]; // four cards (turn spot) or five (river spot)
+  board: number[]; // three cards (flop spot), four (turn) or five (river)
   pot: number;
   stack: number; // effective stack behind
   oopBets: string; // e.g. "33%, 75%"; used on every street
   oopRaises: string; // e.g. "2.5x"
   ipBets: string;
   ipRaises: string;
+  locks?: { history: number[]; strategy: Float32Array }[]; // fixed strategies, to see how the other player exploits them
 }
 
 /** One node of the solved tree. Per-hand arrays follow `Solved.hands[player]`; action ones are action-major. */
@@ -32,6 +33,7 @@ export interface Solved {
   iterations: number;
   memoryMb: number;
   ms: number;
+  threads: number; // cores used
   hands: number[][]; // by player: [a0, b0, a1, b1, ...]
   root: NodeInfo;
 }

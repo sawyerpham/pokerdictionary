@@ -17,7 +17,7 @@ export class Spot {
      */
     bets(): Int32Array;
     /**
-     * The board so far (4 or 5 cards).
+     * The board so far (3 to 5 cards).
      */
     board(): Uint8Array;
     /**
@@ -49,12 +49,17 @@ export class Spot {
      */
     hands(player: number): Uint8Array;
     /**
+     * Fixes the acting player's strategy at the node reached by `history` (action-major, like `strategy()`), so
+     * solving again shows how the other player should exploit it. Call before solving.
+     */
+    lock(history: Uint32Array | number[], strategy: Float32Array | number[]): void;
+    /**
      * Memory the tree uses, in MB.
      */
     memory_mb(): number;
     /**
-     * Builds the tree from a 4-card (turn) or 5-card (river) board. Each player's sizes apply on every street
-     * and use the solver's syntax, e.g. "33%, 75%" and "2.5x".
+     * Builds the tree from a 3-card (flop), 4-card (turn) or 5-card (river) board. Sizes use the solver's syntax,
+     * e.g. "33%, 75%" and "2.5x"; give one per street as "flop|turn|river" (a missing street repeats the last).
      */
     constructor(oop_range: Float32Array | number[], ip_range: Float32Array | number[], board: Uint8Array | number[], pot: number, stack: number, oop_bets: string, oop_raises: string, ip_bets: string, ip_raises: string);
     /**
@@ -91,6 +96,7 @@ export interface InitOutput {
     readonly spot_finish: (a: number) => void;
     readonly spot_go: (a: number, b: number, c: number) => void;
     readonly spot_hands: (a: number, b: number) => [number, number];
+    readonly spot_lock: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly spot_memory_mb: (a: number) => number;
     readonly spot_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number) => [number, number, number];
     readonly spot_player: (a: number) => number;
@@ -100,8 +106,8 @@ export interface InitOutput {
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
-    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_start: () => void;
 }
 

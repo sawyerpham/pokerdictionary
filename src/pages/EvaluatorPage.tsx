@@ -3,7 +3,8 @@ import { OddsPanel, pct, type Spot } from '../components/OddsPanel';
 import { CardSlot, DeckDialog, type Slot } from '../components/CardPicker';
 import { SourceLink } from '../components/SourceLink';
 import { handName, outlook, shuffledDeck, type Card } from '../engine/cards';
-import { around, HandRangeGrid, openingRange, SEATS } from '../guides/Preflop';
+import { around, HandRangeGrid, openingRange } from '../guides/Preflop';
+import { SEATS } from '../guides/rfi';
 import { SRC } from '../guides/sources';
 
 /** Where a card goes: a seat (by position name) or the board, and which card of it. */

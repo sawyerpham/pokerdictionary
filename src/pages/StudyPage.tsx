@@ -1,18 +1,27 @@
-import type { ComponentType } from 'react';
+import { lazy, Suspense } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ToolCards } from '../components/ToolCards';
-import { Coach } from '../study/Coach';
-import { EquityDrill } from '../study/EquityDrill';
-import { PreflopDrill } from '../study/PreflopDrill';
-import { Progress } from '../study/Progress';
-import { PushFold } from '../study/PushFold';
-import { RangeBuilder } from '../study/RangeBuilder';
-import { Solver } from '../study/Solver';
 import { useAccount } from '../state/account';
 import { TOOLS } from '../study/tools';
-import { Trainer } from '../study/Trainer';
 
-const PAGES: Record<string, ComponentType> = { ranges: RangeBuilder, preflop: PreflopDrill, equity: EquityDrill, solver: Solver, trainer: Trainer, pushfold: PushFold, progress: Progress, coach: Coach };
+// Each tool loads when it's opened: some carry big tables (the charts, the solver).
+const PAGES = {
+  ranges: lazy(() => import('../study/RangeBuilder').then((m) => ({ default: m.RangeBuilder }))),
+  preflop: lazy(() => import('../study/PreflopDrill').then((m) => ({ default: m.PreflopDrill }))),
+  daily: lazy(() => import('../study/DailyFlop').then((m) => ({ default: m.DailyFlop }))),
+  quiz: lazy(() => import('../study/RangeQuiz').then((m) => ({ default: m.RangeQuiz }))),
+  facing: lazy(() => import('../study/Facing').then((m) => ({ default: m.Facing }))),
+  pushfold: lazy(() => import('../study/PushFold').then((m) => ({ default: m.PushFold }))),
+  equity: lazy(() => import('../study/EquityDrill').then((m) => ({ default: m.EquityDrill }))),
+  potodds: lazy(() => import('../study/PotOdds').then((m) => ({ default: m.PotOdds }))),
+  trainer: lazy(() => import('../study/Trainer').then((m) => ({ default: m.Trainer }))),
+  reports: lazy(() => import('../study/Reports').then((m) => ({ default: m.Reports }))),
+  sizing: lazy(() => import('../study/SizingDrill').then((m) => ({ default: m.SizingDrill }))),
+  solver: lazy(() => import('../study/Solver').then((m) => ({ default: m.Solver }))),
+  history: lazy(() => import('../study/History').then((m) => ({ default: m.History }))),
+  progress: lazy(() => import('../study/Progress').then((m) => ({ default: m.Progress }))),
+  coach: lazy(() => import('../study/Coach').then((m) => ({ default: m.Coach }))),
+} as const;
 
 export function StudyPage() {
   const { tool } = useParams();
@@ -26,7 +35,7 @@ export function StudyPage() {
       </main>
     );
   }
-  const Tool = PAGES[t.slug];
+  const Tool = PAGES[t.slug as keyof typeof PAGES];
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-2 py-3 sm:px-4">
       <div className="mb-4 px-2">
@@ -36,7 +45,9 @@ export function StudyPage() {
         <h1 className="text-title-2">{t.title}</h1>
         <p className="text-[15px] text-[var(--text-muted)]">{t.desc}</p>
       </div>
-      <Tool key={`${t.slug}-${pulled}`} />
+      <Suspense fallback={<p className="px-2 text-[15px] text-[var(--text-muted)]">Loading…</p>}>
+        <Tool key={`${t.slug}-${pulled}`} />
+      </Suspense>
     </main>
   );
 }

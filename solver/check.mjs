@@ -65,4 +65,24 @@ for (let i = 0; i < n; i++) {
   const sum = Array.from({ length: acts }, (_, a) => strat[a * n + i]).reduce((x, y) => x + y, 0);
   ok(Math.abs(sum - 1) < 1e-3, `river strategy of hand ${i} sums to ${sum}`);
 }
+
+// Flop, with sizes per street ("flop|turn|river"): OOP may not bet the flop, the turn comes after check-check, and
+// the turn uses its own size.
+const flop = new Spot(range(['KhQc', '7c6c']), range(['8c8h', 'JdTd']), ['Ks', '8d', '5c'].map(id), 100, 300, '|50%', '', '33%|50%', '');
+ok(flop.actions() === 'Check', `OOP has no flop bet, got ${flop.actions()}`);
+solve(flop, 2);
+flop.go([0]);
+ok(flop.actions() === 'Check,Bet:33', `IP bets a third of the pot on the flop, got ${flop.actions()}`);
+flop.go([0, 0]);
+ok(flop.player() === 2 && flop.cards().length === 49, `turn chance node, got ${flop.player()} with ${flop.cards().length} cards`);
+flop.go([0, 0, id('2h')]);
+ok(flop.board().length === 4 && flop.actions() === 'Check,Bet:50', `turn: OOP bets half the pot, got ${flop.actions()}`);
+
+// Node locking: if the polar player is forced to bet every hand (twice as many bluffs as value), the bluff-catcher's
+// best answer is to call every time.
+const locked = new Spot(range(['KhQc']), range(['8c8h', 'JdTd']), ['Ks', '8d', '5c', '2h', '3s'].map(id), 100, 1000, '100%', '', '100%', '');
+locked.lock(Uint32Array.from([0]), Float32Array.from([0, 0, 1, 1])); // after OOP checks: check 0%, bet 100%, both hands
+solve(locked, 0.1);
+locked.go([0, 1]);
+ok(locked.strategy()[1] > 0.99, `calls a locked always-bet, got ${locked.strategy()[1]}`);
 console.log(`solver check passed (river ${ms.toFixed(0)} ms)`);

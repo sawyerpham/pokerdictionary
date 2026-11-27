@@ -19,6 +19,16 @@ export function handName([a, b]: Card[]) {
 
 export type Rng = () => number;
 
+/** Seeded random numbers (mulberry32): the same seed always gives the same sequence. */
+export function seeded(seed: number): Rng {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export function shuffledDeck(rng: Rng = Math.random): Card[] {
   const d = Array.from({ length: 52 }, (_, i) => i);
   for (let i = 51; i > 0; i--) {
@@ -212,4 +222,26 @@ export function outsFor(hole: Card[], board: Card[], alsoDead: Card[] = []): Car
     const mine = categoryOf(evaluate([...hole, ...board, c]));
     return mine > now && mine > categoryOf(evaluate([...board, c]));
   });
+}
+
+/** Exact all-in equity of `hero` against one known hand, every runout dealt (a flop or a turn board). Ties split. */
+export function headsUpEquity(hero: Card[], villain: Card[], board: Card[]): number {
+  const dead = new Set([...hero, ...villain, ...board]);
+  const live = [...Array(52).keys()].filter((c) => !dead.has(c));
+  let won = 0, deals = 0;
+  const score = (runout: Card[]) => {
+    const a = evaluate([...hero, ...runout]), b = evaluate([...villain, ...runout]);
+    won += a > b ? 1 : a === b ? 0.5 : 0;
+    deals++;
+  };
+  if (board.length === 5) score(board);
+  else if (board.length === 4) for (const c of live) score([...board, c]);
+  else for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) score([...board, live[i], live[j]]);
+  return won / deals;
+}
+
+/** Next cards that put `hero` ahead of `villain` (ties don't count). */
+export function outsAgainst(hero: Card[], villain: Card[], board: Card[]): Card[] {
+  const dead = new Set([...hero, ...villain, ...board]);
+  return [...Array(52).keys()].filter((c) => !dead.has(c) && evaluate([...hero, ...board, c]) > evaluate([...villain, ...board, c]));
 }

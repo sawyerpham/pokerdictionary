@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Card } from '../engine/cards';
 import type { Weights } from '../engine/ranges';
-import { expandRange, RFI } from '../guides/diagrams';
+import { expandRange, RFI } from '../guides/rfi';
 
 export interface SavedRange {
   name: string;

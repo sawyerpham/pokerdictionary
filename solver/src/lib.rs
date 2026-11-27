@@ -1,4 +1,4 @@
-//! A heads-up turn or river spot solved by postflop-solver, exposed to JavaScript.
+//! A heads-up flop, turn or river spot solved by postflop-solver, exposed to JavaScript.
 //!
 //! Cards use the solver's ids: 4 * rank + suit, rank 0 = deuce .. 12 = ace, suit c d h s = 0..3.
 //! Ranges are 1326 weights in the solver's card-pair order (see `Range::from_raw_data`).
@@ -6,6 +6,8 @@
 
 use postflop_solver::*;
 use wasm_bindgen::prelude::*;
+#[cfg(feature = "threads")]
+pub use wasm_bindgen_rayon::init_thread_pool;
 
 /// Largest tree we allocate, in bytes. Above `PLAIN` values are stored as 16-bit integers.
 const PLAIN: u64 = 600 << 20;
@@ -18,8 +20,8 @@ pub struct Spot {
 
 #[wasm_bindgen]
 impl Spot {
-    /// Builds the tree from a 4-card (turn) or 5-card (river) board. Each player's sizes apply on every street
-    /// and use the solver's syntax, e.g. "33%, 75%" and "2.5x".
+    /// Builds the tree from a 3-card (flop), 4-card (turn) or 5-card (river) board. Sizes use the solver's syntax,
+    /// e.g. "33%, 75%" and "2.5x"; give one per street as "flop|turn|river" (a missing street repeats the last).
     #[wasm_bindgen(constructor)]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -33,22 +35,35 @@ impl Spot {
         ip_bets: &str,
         ip_raises: &str,
     ) -> Result<Spot, String> {
-        if board.len() != 4 && board.len() != 5 {
-            return Err("Pick four board cards for a turn spot or five for a river spot".into());
+        if !(3..=5).contains(&board.len()) {
+            return Err("Pick three, four or five board cards".into());
         }
         let card_config = CardConfig {
             range: [Range::from_raw_data(oop_range)?, Range::from_raw_data(ip_range)?],
             flop: [board[0], board[1], board[2]],
-            turn: board[3],
+            turn: board.get(3).copied().unwrap_or(NOT_DEALT),
             river: board.get(4).copied().unwrap_or(NOT_DEALT),
         };
-        let sizes = [BetSizeOptions::try_from((oop_bets, oop_raises))?, BetSizeOptions::try_from((ip_bets, ip_raises))?];
+        // Sizes for the streets still to play, in order.
+        let street = |s: &str, k: usize| -> String {
+            let parts: Vec<&str> = s.split('|').collect();
+            parts[k.min(parts.len() - 1)].to_string()
+        };
+        let sizes = |k: usize| -> Result<[BetSizeOptions; 2], String> {
+            Ok([
+                BetSizeOptions::try_from((street(oop_bets, k).as_str(), street(oop_raises, k).as_str()))?,
+                BetSizeOptions::try_from((street(ip_bets, k).as_str(), street(ip_raises, k).as_str()))?,
+            ])
+        };
+        let first = board.len() - 3; // 0 flop, 1 turn, 2 river
+        let at = |street: usize| sizes(street.saturating_sub(first));
         let tree_config = TreeConfig {
-            initial_state: if board.len() == 4 { BoardState::Turn } else { BoardState::River },
+            initial_state: [BoardState::Flop, BoardState::Turn, BoardState::River][first],
             starting_pot: pot,
             effective_stack: stack,
-            turn_bet_sizes: sizes.clone(),
-            river_bet_sizes: sizes,
+            flop_bet_sizes: at(0)?,
+            turn_bet_sizes: at(1)?,
+            river_bet_sizes: at(2)?,
             add_allin_threshold: 1.5,
             force_allin_threshold: 0.15,
             merging_threshold: 0.1,
@@ -92,6 +107,21 @@ impl Spot {
         self.game.cache_normalized_weights();
     }
 
+    /// Fixes the acting player's strategy at the node reached by `history` (action-major, like `strategy()`), so
+    /// solving again shows how the other player should exploit it. Call before solving.
+    pub fn lock(&mut self, history: &[u32], strategy: &[f32]) -> Result<(), String> {
+        self.go(history);
+        if self.game.is_terminal_node() || self.game.is_chance_node() {
+            return Err("Only a decision can be locked".into());
+        }
+        if strategy.len() != self.game.available_actions().len() * self.game.private_cards(self.game.current_player()).len() {
+            return Err("The locked strategy doesn't fit this node".into());
+        }
+        self.game.lock_current_strategy(strategy);
+        self.game.back_to_root();
+        Ok(())
+    }
+
     /// Who acts here: 0 OOP, 1 IP, 2 a card is dealt, -1 the hand is over.
     pub fn player(&self) -> i32 {
         if self.game.is_terminal_node() {
@@ -130,7 +160,7 @@ impl Spot {
         (0..52u8).filter(|&c| mask & (1 << c) != 0).collect()
     }
 
-    /// The board so far (4 or 5 cards).
+    /// The board so far (3 to 5 cards).
     pub fn board(&self) -> Vec<u8> {
         self.game.current_board()
     }

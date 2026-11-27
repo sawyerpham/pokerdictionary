@@ -12,6 +12,8 @@ services:
         required: false
     volumes:
       - data:/data
+      # Flop libraries and board reports (too big for git): deploy/upload-data.sh copies them here.
+      - ../poker-data:/study:ro
     # `docker compose up --wait` (deploy/cd.sh) waits for this before calling a deploy done.
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]

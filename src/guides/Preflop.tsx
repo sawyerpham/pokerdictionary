@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import type { Guide } from './registry';
 import { SRC } from './sources';
 import { EQUITY } from './preflopEquity';
-import { expandRange, FULL, groupOf, GROUPS, RFI } from './diagrams';
+import { FULL, groupOf, GROUPS } from './diagrams';
+import { expandRange, RFI, SEATS } from './rfi';
 import { Cite, GuideH2, GuideP, Sources, withFraction } from './ui';
 
 const SOURCES = [SRC.upswingRfi, SRC.engine];
@@ -48,18 +49,6 @@ export function Grid({ cell, onHover, mark }: { cell: (h: string) => { bg: strin
   );
 }
 
-
-// Seats that can be first into the pot, in acting order, named as on the table. The big blind never opens.
-export const SEATS: Record<number, string[]> = {
-  2: ['BTN'],
-  3: ['BTN', 'SB'],
-  4: ['UTG', 'BTN', 'SB'],
-  5: ['UTG', 'CO', 'BTN', 'SB'],
-  6: ['UTG', 'HJ', 'CO', 'BTN', 'SB'],
-  7: ['UTG', 'LJ', 'HJ', 'CO', 'BTN', 'SB'],
-  8: ['UTG', 'UTG+1', 'LJ', 'HJ', 'CO', 'BTN', 'SB'],
-  9: ['UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO', 'BTN', 'SB'],
-};
 
 // Published ranges go by how many players are left to act behind you (1 = small blind ... 5 = six-max UTG).
 const BY_BEHIND: Record<number, Set<string>> = Object.fromEntries(

@@ -1,5 +1,7 @@
 // Engine self-check: `node src/engine/selfcheck.ts`. Throws on the first failure.
-import { categoryOf, describe, equity, evaluate, outlook, outsFor, type Card } from './cards.ts';
+import { categoryOf, describe, equity, evaluate, headsUpEquity, outlook, outsAgainst, outsFor, type Card } from './cards.ts';
+import { SPOTS } from './facing.ts';
+import { parseHands } from './history.ts';
 import { decide } from './bots.ts';
 import { act, newTable, pots, startHand, type Table } from './holdem.ts';
 import { PRESETS } from './profiles.ts';
@@ -98,4 +100,95 @@ const strict = splitChips(set, 6, 20000, true)!;
 ok(strict.exact && strict.perPlayer.join() === '15,12,5,0', `cheapest-first split ${strict.perPlayer.join()}`);
 const odd = splitChips([{ name: 'Red', color: '#d00', count: 100, cents: 500 }], 4, 1200)!;
 ok(!odd.exact && odd.value === 1000, `inexact split should fall back to $10, got ${JSON.stringify(odd)}`);
+
+// Pot odds: a turned flush draw plus two overcards against queens has 15 outs of 44 rivers.
+ok(outsAgainst(c('As Ks'), c('Qd Qc'), c('2s 7s 9d Jh')).length === 15, 'flush draw and overcards: 15 outs');
+ok(Math.abs(headsUpEquity(c('As Ks'), c('Qd Qc'), c('2s 7s 9d Jh')) - 15 / 44) < 1e-9, 'turn equity is outs / 44');
+const flopEq = headsUpEquity(c('As Ks'), c('Qd Qc'), c('2s 7s 9d'));
+ok(flopEq > 0.5 && flopEq < 0.6, `flush draw and overcards vs queens on the flop ~55%, got ${flopEq}`);
+
+// Facing a raise: aces always re-raise, 72o folds to an early open, and the big blind defends wider against the button.
+for (const [key, spot] of Object.entries(SPOTS)) {
+  ok(spot.nodes[0].freq[2][HANDS.indexOf('AA')] >= 95, `${key}: AA should 3-bet`);
+  ok(spot.nodes.every((n) => n.freq[0].every((_, i) => Math.abs(n.freq.reduce((a, f) => a + f[i], 0) - 100) <= 2)), `${key}: frequencies add to 100`);
+}
+ok(SPOTS['UTG-BB'].nodes[0].freq[0][HANDS.indexOf('72o')] === 100, 'BB folds 72o to UTG');
+const defend = (key: string) => HANDS.reduce((n, h, i) => n + (100 - SPOTS[key].nodes[0].freq[0][i]) * combosOf(h), 0) / 1326;
+ok(defend('BTN-BB') > defend('UTG-BB') + 10, 'BB defends wider vs BTN than vs UTG');
+
+// Hand histories: a button open that wins after a c-bet, and a big blind call that loses at showdown.
+const HISTORY = `PokerStars Hand #243650178930:  Hold'em No Limit ($0.25/$0.50 USD) - 2023/03/01 12:00:00 ET
+Table 'Alpha' 6-max Seat #4 is the button
+Seat 1: alice ($50 in chips)
+Seat 2: bob ($50 in chips)
+Seat 3: carol ($50 in chips)
+Seat 4: Hero ($50 in chips)
+Seat 5: dave ($50 in chips)
+Seat 6: erin ($50 in chips)
+dave: posts small blind $0.25
+erin: posts big blind $0.50
+*** HOLE CARDS ***
+Dealt to Hero [Ah Kd]
+alice: folds
+bob: folds
+carol: folds
+Hero: raises $0.75 to $1.25
+dave: folds
+erin: calls $0.75
+*** FLOP *** [Ks 7d 2c]
+erin: checks
+Hero: bets $1.50
+erin: calls $1.50
+*** TURN *** [Ks 7d 2c] [9h]
+erin: checks
+Hero: checks
+*** RIVER *** [Ks 7d 2c 9h] [3s]
+erin: checks
+Hero: bets $3
+erin: folds
+Uncalled bet ($3) returned to Hero
+Hero collected $5.36 from pot
+*** SUMMARY ***
+Total pot $5.75 | Rake $0.39
+Seat 4: Hero (button) collected ($5.36)
+
+
+PokerStars Hand #243650178931:  Hold'em No Limit ($0.25/$0.50 USD) - 2023/03/01 12:01:00 ET
+Table 'Alpha' 6-max Seat #2 is the button
+Seat 1: alice ($50 in chips)
+Seat 2: bob ($50 in chips)
+Seat 3: carol ($50 in chips)
+Seat 4: Hero ($52.61 in chips)
+Seat 5: dave ($50 in chips)
+Seat 6: erin ($50 in chips)
+carol: posts small blind $0.25
+Hero: posts big blind $0.50
+*** HOLE CARDS ***
+Dealt to Hero [7c 2d]
+dave: folds
+erin: folds
+alice: folds
+bob: raises $0.75 to $1.25
+carol: folds
+Hero: calls $0.75
+*** FLOP *** [Qs Jh 4d]
+Hero: checks
+bob: bets $1.50
+Hero: calls $1.50
+*** TURN *** [Qs Jh 4d] [2s]
+Hero: checks
+bob: checks
+*** RIVER *** [Qs Jh 4d 2s] [8c]
+Hero: checks
+bob: checks
+*** SHOW DOWN ***
+Hero: shows [7c 2d] (a pair of Deuces)
+bob: shows [Qd Th] (a pair of Queens)
+bob collected $5.36 from pot
+*** SUMMARY ***`;
+const [won, lost] = parseHands(HISTORY);
+ok(won && lost, 'two hands parsed');
+ok(won.position === 'BTN' && Math.abs(won.net - 5.22) < 1e-9 && won.rfi?.raised && won.rfi.inChart && won.cbet === true && !won.showdown, `button hand: ${JSON.stringify(won)}`);
+ok(lost.position === 'BB' && Math.abs(lost.net + 5.5) < 1e-9 && lost.vpip && !lost.pfr && lost.threeBet === false && lost.showdown && !lost.wonShowdown, `big blind hand: ${JSON.stringify(lost)}`);
+ok(lost.facingOpen?.spot === 'BTN-BB' && lost.facingOpen.chose === 'Call' && lost.facingOpen.best === 'Fold' && lost.facingOpen.loss > 0.1, `72o call vs BTN: ${JSON.stringify(lost.facingOpen)}`);
 console.log('engine self-check passed');
