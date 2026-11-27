@@ -61,17 +61,10 @@ export function MiniCards({ cards }: { cards: string }) {
 
 /* ------------------------------------------------------------- the table */
 
-const SEATS: Record<6 | 9, { name: string; group: keyof typeof GROUPS }[]> = {
-  // Clockwise from the button.
-  9: [
-    { name: 'BTN', group: 'late' }, { name: 'SB', group: 'blinds' }, { name: 'BB', group: 'blinds' },
-    { name: 'UTG', group: 'early' }, { name: 'UTG+1', group: 'early' }, { name: 'UTG+2', group: 'early' },
-    { name: 'LJ', group: 'middle' }, { name: 'HJ', group: 'middle' }, { name: 'CO', group: 'late' },
-  ],
-  6: [
-    { name: 'BTN', group: 'late' }, { name: 'SB', group: 'blinds' }, { name: 'BB', group: 'blinds' },
-    { name: 'UTG', group: 'early' }, { name: 'HJ', group: 'middle' }, { name: 'CO', group: 'late' },
-  ],
+// Clockwise from the button.
+const SEATS: Record<6 | 9, string[]> = {
+  9: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'LJ', 'HJ', 'CO'],
+  6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
 };
 // Spelled out under the seats whose abbreviations don't explain themselves.
 export const FULL: Record<string, string> = { LJ: 'Lojack', HJ: 'Hijack', CO: 'Cutoff' };
@@ -82,22 +75,72 @@ export const GROUPS = {
   late: { label: 'Late', color: CAT.aqua },
   blinds: { label: 'Blinds', color: CAT.yellow },
 };
+export const groupOf = (seat: string): keyof typeof GROUPS =>
+  seat.startsWith('UTG') ? 'early' : seat === 'LJ' || seat === 'HJ' ? 'middle' : seat === 'CO' || seat === 'BTN' ? 'late' : 'blinds';
 
-/** The seats around a table, colored by position group, with the order they act before the flop. */
-export function TableDiagram({ initial = 9 }: { initial?: 6 | 9 }) {
-  const [n, setN] = useState<6 | 9>(initial);
-  const [post, setPost] = useState(false);
-  const seats = SEATS[n];
+/**
+ * `seats` (clockwise from the button, 2 to 9 of them) around a table, colored by position group, numbered by the
+ * order they act preflop or, with `post`, after the flop. `you` gets a white border.
+ */
+export function SeatTable({ seats, post = false, you }: { seats: string[]; post?: boolean; you?: string }) {
   const W = 360, H = 262, cx = W / 2, cy = 125;
   const at = (i: number, r = 1) => {
     const a = ((90 + (i * 360) / seats.length) * Math.PI) / 180;
     return { x: cx + 150 * r * Math.cos(a), y: cy + 98 * r * Math.sin(a) };
   };
-  // Preflop UTG (index 3) acts first; after the flop the SB (index 1) does.
-  const order = (i: number) => ((i - (post ? 1 : 3) + seats.length) % seats.length) + 1;
+  // Preflop UTG (index 3) acts first, or the button with three or fewer players (heads-up it posts the small blind);
+  // after the flop the seat left of the button does.
+  const first = post ? 1 : seats.length <= 3 ? 0 : 3;
+  const order = (i: number) => ((i - first + seats.length) % seats.length) + 1;
   const when = post ? 'after the flop' : 'preflop';
-  const toggle = (on: boolean) => `min-h-8 rounded-[8px] px-3 text-[13px] font-medium pointer-coarse:min-h-11 ${on ? 'bg-[#636366] text-white' : 'bg-[var(--fill)]'}`;
   const btn = at(0, 0.7);
+  return (
+    <>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block w-full max-w-[440px]" role="img" aria-label={`${seats.length}-handed table: ${seats.join(', ')}${you ? `; you are ${you}` : ''}`}>
+        <ellipse cx={cx} cy={cy} rx={124} ry={70} fill="#0e1828" stroke="#2c2c2e" strokeWidth={8} />
+        <text x={cx} y={cy - 2} textAnchor="middle" fontSize={11} fill={MUTED} letterSpacing={2}>
+          ACTION MOVES
+        </text>
+        <text x={cx} y={cy + 13} textAnchor="middle" fontSize={11} fill={MUTED} letterSpacing={2}>
+          CLOCKWISE ↻
+        </text>
+        <circle cx={btn.x + 18} cy={btn.y - 4} r={9} fill="#fff" />
+        <text x={btn.x + 18} y={btn.y} textAnchor="middle" fontSize={10} fontWeight={700} fill="#000">
+          D
+        </text>
+        {seats.map((name, i) => {
+          const p = at(i);
+          const group = GROUPS[groupOf(name)];
+          return (
+            <g key={name}>
+              <title>{`${name}: ${group.label.toLowerCase()} position, acts ${order(i)} of ${seats.length} ${when}`}</title>
+              <circle cx={p.x} cy={p.y} r={25} fill={group.color} stroke={name === you ? '#fff' : 'var(--bg-second)'} strokeWidth={name === you ? 3.5 : 2} />
+              <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={name.length > 3 ? 11 : 13} fontWeight={700} fill="#fff">
+                {name}
+              </text>
+              {FULL[name] && (
+                <text x={p.x} y={p.y + 38} textAnchor="middle" fontSize={11} fill={INK}>
+                  {FULL[name]}
+                </text>
+              )}
+              <circle cx={p.x + 20} cy={p.y - 19} r={9} fill="var(--bg-second)" />
+              <text x={p.x + 20} y={p.y - 15.5} textAnchor="middle" fontSize={10} fontWeight={600} fill={INK}>
+                {order(i)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <Legend items={Object.values(GROUPS).map((g) => ({ color: g.color, label: g.label }))} />
+    </>
+  );
+}
+
+/** The guides' version: 6 or 9 handed, preflop or postflop order. */
+export function TableDiagram({ initial = 9 }: { initial?: 6 | 9 }) {
+  const [n, setN] = useState<6 | 9>(initial);
+  const [post, setPost] = useState(false);
+  const toggle = (on: boolean) => `min-h-8 rounded-[8px] px-3 text-[13px] font-medium pointer-coarse:min-h-11 ${on ? 'bg-[#636366] text-white' : 'bg-[var(--fill)]'}`;
   return (
     <Figure title="Seats and acting order"
       caption={
@@ -128,41 +171,7 @@ export function TableDiagram({ initial = 9 }: { initial?: 6 | 9 }) {
           ))}
         </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block w-full max-w-[440px]" role="img" aria-label={`${n}-handed table: ${seats.map((s) => s.name).join(', ')}`}>
-        <ellipse cx={cx} cy={cy} rx={124} ry={70} fill="#0e1828" stroke="#2c2c2e" strokeWidth={8} />
-        <text x={cx} y={cy - 2} textAnchor="middle" fontSize={11} fill={MUTED} letterSpacing={2}>
-          ACTION MOVES
-        </text>
-        <text x={cx} y={cy + 13} textAnchor="middle" fontSize={11} fill={MUTED} letterSpacing={2}>
-          CLOCKWISE ↻
-        </text>
-        <circle cx={btn.x + 18} cy={btn.y - 4} r={9} fill="#fff" />
-        <text x={btn.x + 18} y={btn.y} textAnchor="middle" fontSize={10} fontWeight={700} fill="#000">
-          D
-        </text>
-        {seats.map((s, i) => {
-          const p = at(i);
-          return (
-            <g key={s.name}>
-              <title>{`${s.name}: ${GROUPS[s.group].label.toLowerCase()} position, acts ${order(i)} of ${seats.length} ${when}`}</title>
-              <circle cx={p.x} cy={p.y} r={25} fill={GROUPS[s.group].color} stroke="var(--bg-second)" strokeWidth={2} />
-              <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={s.name.length > 3 ? 11 : 13} fontWeight={700} fill="#fff">
-                {s.name}
-              </text>
-              {FULL[s.name] && (
-                <text x={p.x} y={p.y + 38} textAnchor="middle" fontSize={11} fill={INK}>
-                  {FULL[s.name]}
-                </text>
-              )}
-              <circle cx={p.x + 20} cy={p.y - 19} r={9} fill="var(--bg-second)" />
-              <text x={p.x + 20} y={p.y - 15.5} textAnchor="middle" fontSize={10} fontWeight={600} fill={INK}>
-                {order(i)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <Legend items={Object.values(GROUPS).map((g) => ({ color: g.color, label: g.label }))} />
+      <SeatTable seats={SEATS[n]} post={post} />
     </Figure>
   );
 }

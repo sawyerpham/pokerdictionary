@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { PlayingCard } from '../components/PlayingCard';
 import { SourceLink } from '../components/SourceLink';
 import { handName, shuffledDeck } from '../engine/cards';
-import { HandRangeGrid, openingRange, SEATS } from '../guides/Preflop';
+import { SeatTable } from '../guides/diagrams';
+import { around, HandRangeGrid, openingRange, SEATS } from '../guides/Preflop';
 import { SRC } from '../guides/sources';
 import { useStudy, type Miss } from '../state/studyStore';
 import { BUTTON, PANEL } from './ui';
@@ -84,7 +85,8 @@ export function PreflopDrill() {
           </span>
         </div>
 
-        <p className="text-center text-[17px]">
+        <SeatTable seats={around(players)} you={q.seat} />
+        <p className="mt-2 text-center text-[17px]">
           <strong>{q.seat}</strong>, {players} players, folded to you
         </p>
         <div className="my-4 flex justify-center gap-2">

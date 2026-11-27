@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import type { Guide } from './registry';
 import { SRC } from './sources';
 import { EQUITY } from './preflopEquity';
-import { expandRange, FULL, GROUPS, RFI } from './diagrams';
+import { expandRange, FULL, groupOf, GROUPS, RFI } from './diagrams';
 import { Cite, GuideH2, GuideP, Sources, withFraction } from './ui';
 
 const SOURCES = [SRC.upswingRfi, SRC.engine];
@@ -82,8 +82,6 @@ export function openingRange(players: number, behind: number): Set<string> {
 
 // Where each seat sits on the picture, clockwise from the button.
 export const around = (players: number) => (players === 2 ? ['BTN', 'BB'] : ['BTN', 'SB', 'BB', ...SEATS[players].slice(0, -2)]);
-const groupOf = (seat: string) =>
-  seat.startsWith('UTG') ? 'early' : seat === 'LJ' || seat === 'HJ' ? 'middle' : seat === 'CO' || seat === 'BTN' ? 'late' : 'blinds';
 
 /** The table drawn from above. Tap a seat to say that's you; its border turns white. */
 function SeatPicker({ players, seat, onPick }: { players: number; seat: string; onPick: (seat: string) => void }) {
