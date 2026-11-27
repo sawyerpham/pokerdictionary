@@ -2,18 +2,12 @@
 // Used by the Evaluator page and, following the live table, by the Table page.
 import { useDeferredValue, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { CATEGORIES, describe, evaluate, outlook, outsFor, rankOf, RANKS, suitOf, type Card } from '../engine/cards';
+import { CATEGORIES, describe, evaluate, handName, outlook, outsFor, type Card } from '../engine/cards';
 import { asFraction } from '../guides/ui';
 
 export const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 /** Simple fraction beside a percentage: "1/50" when rare, nothing when it would round to never or always. */
 const frac = (v: number) => (v < 0.001 || v > 0.93 ? '' : v < 0.08 ? `1/${Math.round(1 / v)}` : asFraction(v * 100));
-/** "AKs" style name of two hole cards, high card first. */
-export function handName([a, b]: Card[]) {
-  const [hi, lo] = rankOf(a) >= rankOf(b) ? [a, b] : [b, a];
-  const name = RANKS[rankOf(hi)] + RANKS[rankOf(lo)];
-  return rankOf(a) === rankOf(b) ? name : name + (suitOf(a) === suitOf(b) ? 's' : 'o');
-}
 
 export interface Spot {
   /** Known hole cards of every player still in (0–2 each); unknown cards are dealt at random. */

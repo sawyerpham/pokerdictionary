@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { chipCss, money } from '../components/Chips';
-import { Toggle } from '../components/RuleControls';
+import { INPUT, Toggle } from '../components/RuleControls';
 import { splitChips, type ChipColor } from '../engine/chipCalc';
 import { useSettings } from '../state/settingsStore';
 
@@ -62,7 +62,6 @@ const toCents = (s: string) => Math.round(parseFloat(s.replace(/[$,\s]/g, '')) *
 const toInt = (s: string) => Math.max(0, Math.floor(Number(s.replace(/[,\s]/g, ''))) || 0);
 
 const STEP = 'hit relative flex h-7 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--fill)] text-[19px] leading-none active:bg-white/25 disabled:opacity-40';
-const INPUT = 'w-full min-w-0 rounded-[8px] bg-[var(--bg-main)] px-2 py-1 text-[15px] tabular-nums outline-none ring-1 ring-[var(--line)] focus:ring-[var(--accent)]';
 
 /** A side-view stack of `n` chips in `color`, drawn in the chip design from Settings. */
 function Stack({ n, color }: { n: number; color: string }) {

@@ -4,6 +4,7 @@ import { decide } from './bots.ts';
 import { act, newTable, pots, startHand, type Table } from './holdem.ts';
 import { PRESETS } from './profiles.ts';
 import { splitChips } from './chipCalc.ts';
+import { equityVsRange, pickWeighted, solverRange } from './ranges.ts';
 
 const ok = (cond: unknown, msg: string) => {
   if (!cond) throw new Error(msg);
@@ -35,6 +36,14 @@ const known = outlook([c('As Ah'), c('Ks Kh')], [], 0, 4000);
 ok(known.equity[0] > 0.78 && known.equity[0] < 0.86, `AA vs KK ~82%, got ${known.equity[0]}`);
 ok(outsFor(c('As Ks'), c('2s 7s 9d')).filter((x) => x % 4 === 0).length === 9, 'flush draw outs');
 ok(outlook([c('As Ks'), ...unknown(5)], c('Qs Js Ts'), 0, 500).win === 1, 'royal flush always wins');
+
+// Ranges: postflop-solver's combo order, equity against a range, weighted picks.
+const sr = solverRange({ AKs: 1 });
+ok(sr.reduce((n, x) => n + x, 0) === 4 && sr[1319] === 1, 'AKs is 4 solver combos, As Ks at index 1319');
+const vsKK = equityVsRange(c('As Ah'), [], { KK: 1, '72o': 0 }, 400);
+ok(vsKK > 0.78 && vsKK < 0.86, `AA vs a KK range ~82%, got ${vsKK}`);
+ok(equityVsRange(c('As Ah'), c('Ks Kd Kh 7c 2s'), { KK: 1, QQ: 1 }) === 1, 'board blocks every KK; AA full house beats QQ');
+ok(pickWeighted([0, 0, 5, 0]) === 2 && pickWeighted([0, 0]) === -1, 'weighted pick');
 
 // Side pots: A all in 50, B all in 100, C covers 200 -> main 150, side 100, side 100 (C alone).
 const t0 = newTable(['a', 'b', 'c'], 0, 1, 2);

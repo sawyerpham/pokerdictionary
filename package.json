@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node src/engine/selfcheck.ts",
+    "test": "node src/engine/selfcheck.ts && node solver/check.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

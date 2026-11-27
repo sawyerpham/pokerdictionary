@@ -24,7 +24,7 @@ const LIGHT = [REDS[0], REDS[1], GREENS[0], GREENS[1]];
 const step = (t: number, n: number) => Math.max(0, Math.min(n - 1, Math.floor(t * n)));
 
 /** The 13×13 grid of starting hands; each cell is colored and described by the caller. */
-function Grid({ cell, onHover, mark }: { cell: (h: string) => { bg: string; ink: string; small?: string; title: string }; onHover: (h?: string) => void; mark?: string }) {
+export function Grid({ cell, onHover, mark }: { cell: (h: string) => { bg: string; ink: string; small?: string; title: string }; onHover: (h?: string) => void; mark?: string }) {
   return (
     <div className="grid gap-px" style={{ gridTemplateColumns: 'repeat(13, minmax(0, 1fr))' }} onMouseLeave={() => onHover(undefined)}>
       {HANDS.map((h) => {
@@ -32,6 +32,7 @@ function Grid({ cell, onHover, mark }: { cell: (h: string) => { bg: string; ink:
         return (
           <span
             key={h}
+            data-hand={h}
             onMouseEnter={() => onHover(h)}
             onClick={() => onHover(h)}
             title={c.title}

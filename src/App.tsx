@@ -6,6 +6,7 @@ import { TablePage } from './pages/TablePage';
 import { GuidesPage } from './pages/GuidesPage';
 import { ChipsPage } from './pages/ChipsPage';
 import { EvaluatorPage } from './pages/EvaluatorPage';
+import { StudyPage } from './pages/StudyPage';
 
 function DeepDiveRedirect() {
   return <Navigate to={`/guides/${useParams().slug}`} replace />;
@@ -24,6 +25,8 @@ function App() {
         <Route path="/deep-dives" element={<Navigate to="/guides/art-of-bluffing" replace />} />
         <Route path="/deep-dives/:slug" element={<DeepDiveRedirect />} />
         <Route path="/evaluator" element={<EvaluatorPage />} />
+        <Route path="/study" element={<StudyPage />} />
+        <Route path="/study/:tool" element={<StudyPage />} />
         <Route path="/chips" element={<ChipsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>

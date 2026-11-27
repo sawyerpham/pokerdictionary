@@ -4,7 +4,8 @@ import type { Table } from '../engine/holdem';
 import { HandRangeGrid } from '../guides/Preflop';
 import { SRC } from '../guides/sources';
 import { useSettings } from '../state/settingsStore';
-import { handName, OddsPanel } from './OddsPanel';
+import { OddsPanel } from './OddsPanel';
+import { handName } from '../engine/cards';
 import { Toggle } from './RuleControls';
 import { SourceLink } from './SourceLink';
 

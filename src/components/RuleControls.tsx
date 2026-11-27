@@ -159,3 +159,6 @@ export function ActionRow({ children, onClick }: { children: ReactNode; onClick:
     </button>
   );
 }
+
+/** Text and number inputs. */
+export const INPUT = 'w-full min-w-0 rounded-[8px] bg-[var(--bg-main)] px-2 py-1 text-[15px] tabular-nums outline-none ring-1 ring-[var(--line)] focus:ring-[var(--accent)]';

@@ -10,6 +10,13 @@ export const rankOf = (c: Card) => c >> 2;
 export const suitOf = (c: Card) => c & 3;
 export const rankLabel = (c: Card) => (rankOf(c) === 8 ? '10' : RANKS[rankOf(c)]);
 
+/** "AKs" style name of two hole cards, high card first. */
+export function handName([a, b]: Card[]) {
+  const [hi, lo] = rankOf(a) >= rankOf(b) ? [a, b] : [b, a];
+  const name = RANKS[rankOf(hi)] + RANKS[rankOf(lo)];
+  return rankOf(a) === rankOf(b) ? name : name + (suitOf(a) === suitOf(b) ? 's' : 'o');
+}
+
 export type Rng = () => number;
 
 export function shuffledDeck(rng: Rng = Math.random): Card[] {

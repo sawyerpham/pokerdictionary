@@ -1,0 +1,20 @@
+# WebAssembly wrapper around b-inary/postflop-solver for heads-up river spots.
+# Licensed AGPL-3.0-or-later because the solver is (the rest of this repo is MIT).
+[package]
+name = "postflop-wasm"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Single-threaded (no rayon) and no file I/O: the browser runs it inside a Web Worker.
+postflop-solver = { git = "https://github.com/b-inary/postflop-solver", rev = "9d1509fe5077d019825f833eed04b16d342dfda1", default-features = false }
+wasm-bindgen = "0.2"
+
+[profile.release]
+lto = true
+codegen-units = 1

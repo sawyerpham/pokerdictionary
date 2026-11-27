@@ -4,3 +4,4 @@ backend/dist
 .git
 .claude
 .env
+solver/target
