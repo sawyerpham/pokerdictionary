@@ -1,5 +1,6 @@
 """Backend self-check: `python backend/check.py`. Runs every account flow against a throwaway database."""
 import os
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -97,6 +98,18 @@ ok(boss.post('/api/coach', json=hand).json()['left'] is None, 'no cap for owners
 # An admin can manage account types too.
 ok(boss.put(f'/api/admin/users/{pid}/role', json={'role': 'admin'}).status_code == 200, 'owner makes an admin')
 ok(player.get('/api/admin/users').status_code == 200, 'admins see the Admin page')
+
+# The daily backup is a readable copy of the database, and expired sessions don't go into it.
+import backup  # noqa: E402
+import gzip  # noqa: E402
+with server.db() as con:
+    con.execute("INSERT INTO sessions VALUES ('expired', 1, 0)")
+archive = backup.backup(server.DB)
+copy = Path(server.DB).parent / 'restored.db'
+copy.write_bytes(gzip.decompress(archive.read_bytes()))
+with sqlite3.connect(copy) as con:
+    ok(con.execute('SELECT COUNT(*) FROM users').fetchone()[0] >= 2, 'backup has the users')
+    ok(con.execute("SELECT COUNT(*) FROM sessions WHERE token = 'expired'").fetchone()[0] == 0, 'expired sessions left out')
 
 # Google sign-in is off until it's configured.
 ok(web.get('/api/auth/google', follow_redirects=False).status_code == 404, 'google off without keys')
