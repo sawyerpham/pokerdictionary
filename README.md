@@ -31,6 +31,6 @@ python backend/check.py           # accounts: sign-in, sessions, sync, rate limi
 
 `npm test` checks hand rankings against known cases, equity against published odds (AA vs KK ≈ 82%), side-pot splits, and the chip calculator. It also plays 1,600 bot hands at 2–10 players with uneven stacks and asserts that chips are conserved and every hand finishes. `solver/check.mjs` solves a toy river and checks the textbook result: with a pot-size bet, the polar player bluffs half as often as it value-bets and the bluff-catcher calls half the time. It also solves a turn spot and walks through the river card. CI runs lint, tests, and the build on every push.
 
-Deploy: every push to `main` that passes CI redeploys the site. The `deploy` job SSHes in with a key whose only allowed command is [`deploy/cd.sh`](deploy/cd.sh) (pull, rebuild, wait until healthy). By hand: `sh deploy/cd.sh` on the server.
+Deploy: every push to `main` that passes CI redeploys the site. The `deploy` job SSHes in with a key (the `DEPLOY_SSH_KEY` Actions secret) whose only allowed command is [`deploy/cd.sh`](deploy/cd.sh) (pull, rebuild, wait until healthy). By hand: `sh deploy/cd.sh` on the server.
 
 Built with React, TypeScript, Vite, Tailwind, and FastAPI serving the build.
