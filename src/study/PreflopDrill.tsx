@@ -85,7 +85,9 @@ export function PreflopDrill() {
           </span>
         </div>
 
-        <SeatTable seats={around(players)} you={q.seat} />
+        <div className="rounded-[12px] bg-[var(--bg-main)]/50 p-3 ring-1 ring-white/5 sm:p-4">
+          <SeatTable seats={around(players)} you={q.seat} />
+        </div>
         <p className="mt-2 text-center text-[17px]">
           <strong>{q.seat}</strong>, {players} players, folded to you
         </p>
