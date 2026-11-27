@@ -5,6 +5,7 @@ import { handName, shuffledDeck } from '../engine/cards';
 import { SeatTable } from '../guides/diagrams';
 import { around, HandRangeGrid, openingRange, SEATS } from '../guides/Preflop';
 import { SRC } from '../guides/sources';
+import { record } from '../state/progressStore';
 import { useStudy, type Miss } from '../state/studyStore';
 import { BUTTON, PANEL } from './ui';
 
@@ -33,6 +34,7 @@ export function PreflopDrill() {
     if (answer !== undefined) return;
     const right = raise === opens(q);
     setAnswer(raise);
+    record('preflop', { players: q.players, seat: q.seat, hand: handName(q.hole), right });
     setScore((s) => ({ right: s.right + (right ? 1 : 0), total: s.total + 1 }));
     const rest = misses.filter((m) => !sameSpot(m, q));
     setMisses(right ? rest : [...rest, q]);

@@ -37,8 +37,8 @@ DEV = os.environ.get('DEV') == '1'  # local only: plain-http cookies, sign-in li
 
 SESSION_DAYS = 90
 LINK_MINUTES = 15
-SYNCED = {'pokerdictionary-study', 'poker-settings'}  # the browser stores that follow you between devices
-MAX_DOC = 256 * 1024
+SYNCED = {'pokerdictionary-study', 'poker-settings', 'pokerdictionary-progress'}  # the browser stores that follow you between devices
+MAX_DOC = 512 * 1024
 
 app = FastAPI(docs_url=None, redoc_url=None)
 

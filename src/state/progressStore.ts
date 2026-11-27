@@ -1,0 +1,62 @@
+// Every drill answer and trainer decision, for the Progress page. Synced to your account like your other saves.
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export interface PreflopResult {
+  t: number;
+  players: number;
+  seat: string;
+  hand: string; // "AKo"
+  right: boolean;
+}
+export interface EquityResult {
+  t: number;
+  street: number; // board cards: 3 flop, 4 turn, 5 river
+  off: number; // points between your guess and the real equity
+}
+export interface TrainerResult {
+  t: number;
+  street: number; // 4 turn, 5 river
+  seat: number; // 0 OOP, 1 IP
+  facing: boolean; // facing a bet (calling was an option)
+  chose: string; // action kind: Fold, Check, Call, Bet, Raise, AllIn
+  best: string;
+  loss: number; // % of the starting pot given up
+}
+export interface PushFoldResult {
+  t: number;
+  stack: number; // bb
+  seat: 'SB' | 'BB';
+  hand: string;
+  right: boolean;
+  loss: number; // bb given up against the equilibrium
+}
+
+interface Progress {
+  preflop: PreflopResult[];
+  equity: EquityResult[];
+  trainer: TrainerResult[];
+  pushfold: PushFoldResult[];
+  add: <K extends Kind>(kind: K, result: Omit<Progress[K][number], 't'>) => void;
+  clear: () => void;
+}
+type Kind = 'preflop' | 'equity' | 'trainer' | 'pushfold';
+
+const KEEP = 500; // newest results per tool, so the synced copy stays small
+
+export const useProgress = create<Progress>()(
+  persist(
+    (set) => ({
+      preflop: [],
+      equity: [],
+      trainer: [],
+      pushfold: [],
+      add: (kind, result) => set((s) => ({ [kind]: [...s[kind], { ...result, t: Date.now() }].slice(-KEEP) })),
+      clear: () => set({ preflop: [], equity: [], trainer: [], pushfold: [] }),
+    }),
+    { name: 'pokerdictionary-progress', partialize: ({ preflop, equity, trainer, pushfold }) => ({ preflop, equity, trainer, pushfold }) },
+  ),
+);
+
+/** Records a result without subscribing the caller to the store. */
+export const record: Progress['add'] = (kind, result) => useProgress.getState().add(kind, result);

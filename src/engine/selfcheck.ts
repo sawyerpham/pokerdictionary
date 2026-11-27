@@ -4,7 +4,8 @@ import { decide } from './bots.ts';
 import { act, newTable, pots, startHand, type Table } from './holdem.ts';
 import { PRESETS } from './profiles.ts';
 import { splitChips } from './chipCalc.ts';
-import { equityVsRange, pickWeighted, solverRange } from './ranges.ts';
+import { combosOf, equityVsRange, pickWeighted, solverRange } from './ranges.ts';
+import { CALL, HANDS, PUSH } from './pushfold.ts';
 
 const ok = (cond: unknown, msg: string) => {
   if (!cond) throw new Error(msg);
@@ -44,6 +45,13 @@ const vsKK = equityVsRange(c('As Ah'), [], { KK: 1, '72o': 0 }, 400);
 ok(vsKK > 0.78 && vsKK < 0.86, `AA vs a KK range ~82%, got ${vsKK}`);
 ok(equityVsRange(c('As Ah'), c('Ks Kd Kh 7c 2s'), { KK: 1, QQ: 1 }) === 1, 'board blocks every KK; AA full house beats QQ');
 ok(pickWeighted([0, 0, 5, 0]) === 2 && pickWeighted([0, 0]) === -1, 'weighted pick');
+
+// Push/fold equilibrium (scripts/pushfold.ts): matches the published heads-up results, about 58% shoves and 37% calls
+// at 10 bb; aces always play, 72o never does at 10 bb.
+const share = (T: number[][], bb: number) => HANDS.reduce((n, h, i) => n + (T[bb - 1][i] > 0 ? combosOf(h) : 0), 0) / 1326;
+ok(Math.abs(share(PUSH, 10) - 0.58) < 0.03 && Math.abs(share(CALL, 10) - 0.37) < 0.03, `push/fold at 10 bb: ${share(PUSH, 10)}, ${share(CALL, 10)}`);
+const aces = HANDS.indexOf('AA'), sevenDeuce = HANDS.indexOf('72o');
+ok(PUSH.every((r) => r[aces] > 0) && CALL.every((r) => r[aces] > 0) && PUSH[9][sevenDeuce] < 0, 'push/fold: AA always, 72o not at 10 bb');
 
 // Side pots: A all in 50, B all in 100, C covers 200 -> main 150, side 100, side 100 (C alone).
 const t0 = newTable(['a', 'b', 'c'], 0, 1, 2);

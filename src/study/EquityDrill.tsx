@@ -4,6 +4,7 @@ import { Segmented } from '../components/RuleControls';
 import { shuffledDeck, type Card } from '../engine/cards';
 import { equityVsRange, rangeShare } from '../engine/ranges';
 import { Grid } from '../guides/Preflop';
+import { record } from '../state/progressStore';
 import { findRange, useStudy } from '../state/studyStore';
 import { BUTTON, PANEL, RangeSelect, rangeCell } from './ui';
 
@@ -116,6 +117,7 @@ export function EquityDrill() {
                 onClick={() => {
                   setShown(true);
                   setMisses((m) => [...m, off]);
+                  record('equity', { street, off });
                 }}
                 className={`${BUTTON} bg-[var(--accent)] text-white`}
               >

@@ -4,6 +4,7 @@ import { Segmented } from '../components/RuleControls';
 import { describe, evaluate, shuffledDeck, type Card } from '../engine/cards';
 import { pickWeighted, solverCard, solverRange } from '../engine/ranges';
 import { actionLabel, nodeAt, solveSpot, type NodeInfo, type Progress, type Solved } from '../solver/client';
+import { record } from '../state/progressStore';
 import { findRange, useStudy } from '../state/studyStore';
 import { cardName, DEFAULTS, holesOf, PLAYER, SIZES, STREETS } from './spots';
 import { BUTTON, PANEL, RangeSelect } from './ui';
@@ -126,7 +127,18 @@ export function Trainer() {
       const reached = node.weights[hand.hero][heroIdx] > 0;
       const loss = reached ? Math.max(...evs) - evs[a] : NaN;
       const decision = { actions: node.actions, chosen: a, evs, freq: node.actions.map((_, k) => node.strategy![k * n + heroIdx]), loss };
-      if (reached) setSession((s) => ({ decisions: s.decisions + 1, loss: s.loss + loss }));
+      if (reached) {
+        setSession((s) => ({ decisions: s.decisions + 1, loss: s.loss + loss }));
+        const kind = (k: number) => node.actions[k].split(':')[0];
+        record('trainer', {
+          street: node.board.length,
+          seat: hand.hero,
+          facing: node.actions.includes('Call'),
+          chose: kind(a),
+          best: kind(evs.indexOf(Math.max(...evs))),
+          loss: (loss / DEFAULTS.pot) * 100,
+        });
+      }
       const next = await nodeAt([...node.history, a]);
       setHand(await advance({ ...hand, node: next, log: [...hand.log, `You: ${actionLabel(node.actions[a]).toLowerCase()}`], decisions: [...hand.decisions, decision] }));
     });

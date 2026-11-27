@@ -4,13 +4,15 @@ import { ToolCards } from '../components/ToolCards';
 import { Coach } from '../study/Coach';
 import { EquityDrill } from '../study/EquityDrill';
 import { PreflopDrill } from '../study/PreflopDrill';
+import { Progress } from '../study/Progress';
+import { PushFold } from '../study/PushFold';
 import { RangeBuilder } from '../study/RangeBuilder';
 import { Solver } from '../study/Solver';
 import { useAccount } from '../state/account';
 import { TOOLS } from '../study/tools';
 import { Trainer } from '../study/Trainer';
 
-const PAGES: Record<string, ComponentType> = { ranges: RangeBuilder, preflop: PreflopDrill, equity: EquityDrill, solver: Solver, trainer: Trainer, coach: Coach };
+const PAGES: Record<string, ComponentType> = { ranges: RangeBuilder, preflop: PreflopDrill, equity: EquityDrill, solver: Solver, trainer: Trainer, pushfold: PushFold, progress: Progress, coach: Coach };
 
 export function StudyPage() {
   const { tool } = useParams();

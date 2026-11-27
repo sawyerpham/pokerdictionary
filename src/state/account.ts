@@ -1,6 +1,7 @@
 // Who's signed in, and syncing the saved browser stores to their account. The newest copy of each store wins.
 import { create } from 'zustand';
 import { useSettings } from './settingsStore';
+import { useProgress } from './progressStore';
 import { useStudy } from './studyStore';
 
 export type Role = 'default' | 'premium' | 'admin' | 'owner';
@@ -23,7 +24,7 @@ interface Account {
 
 export const useAccount = create<Account>(() => ({ providers: { google: false, email: false, coach: false }, pulled: 0 }));
 
-const STORES = [useStudy, useSettings];
+const STORES = [useStudy, useSettings, useProgress];
 const changedAt = (name: string) => `sync-at:${name}`;
 const seen = new Map<string, string | null>(); // each store's saved text as last synced or edited
 const timers = new Map<string, number>();

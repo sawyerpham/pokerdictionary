@@ -12,6 +12,8 @@ No-limit hold'em against customizable NPCs, or spectate them playing each other.
 - **Players**: famous-style presets and archetypes, every knob editable, plus your own NPCs
 - **Spectate**: watch an all-NPC table at up to 4× speed
 - **Accounts**: sign in with Google or an emailed link, and your ranges, drill progress, settings and players follow you to every device
+- **Push/fold**: the heads-up shove-or-fold equilibrium for 1–25 bb, as a chart and a drill (computed with this site's engine by [`scripts/pushfold.ts`](scripts/pushfold.ts))
+- **Progress**: every drill answer and trainer decision, with your accuracy over time and your costliest habits
 - **AI coach** (Premium): send a screenshot of a hand and DeepSeek coaches you through each decision, with follow-up questions
 - **Study**: a range builder, preflop and equity drills, a heads-up turn and river solver, and a trainer that grades each decision by EV loss
 
