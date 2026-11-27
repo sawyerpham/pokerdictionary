@@ -34,13 +34,7 @@ The solver is [b-inary/postflop-solver](https://github.com/b-inary/postflop-solv
 
 Flops take minutes to solve, so the trainer's flops come from libraries computed ahead of time on a desktop: [`scripts/compute.ts`](scripts/compute.ts) runs the native build of the same solver ([`solver/native/`](solver/native/), built with `sh solver/native/build.sh`) over the pots in [`scripts/spots.ts`](scripts/spots.ts), with the site's ranges, to within 1% of the pot, and keeps every flop decision in `public/flops` (about 40 KB a flop). The libraries and `public/reports` are too big for git: `sh deploy/upload-data.sh` copies them to the server, where `compose.yml` mounts them. It also writes the board reports, the facing-a-raise charts at other stack depths, and the realization numbers the preflop model can use. It runs one job after another with a progress bar, uses half the CPU and memory at low priority by default, and picks up where it left off if stopped (`node scripts/compute.ts --list`). The standard libraries have raises on the flop only, to fit in memory; the trainer then solves the turn live from the ranges that reached it, raises included. The solver and the wrapper are AGPL-3.0-or-later; the rest of this repo is MIT.
 
-## Run locally
-
-```sh
-npm install && npm run dev        # frontend (the engine runs in the browser)
-npm test                          # engine and solver self-checks
-python backend/check.py           # accounts: sign-in, sessions, sync, rate limits, account types, coach
-```
+## Tests and deploys
 
 `npm test` checks hand rankings against known cases, equity against published odds (AA vs KK ≈ 82%), side-pot splits, and the chip calculator. It also plays 1,600 bot hands at 2–10 players with uneven stacks and asserts that chips are conserved and every hand finishes. `solver/check.mjs` solves a toy river and checks the textbook result: with a pot-size bet, the polar player bluffs half as often as it value-bets and the bluff-catcher calls half the time. It also solves a turn spot and walks through the river card, and a flop spot with a different bet size per street. The engine check also covers pot-odds math, the facing-a-raise charts (aces always re-raise, the big blind defends wider against the button than against UTG), and reading two sample hand histories. CI runs lint, tests, and the build on every push.
 
