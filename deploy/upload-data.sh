@@ -1,11 +1,13 @@
 #!/bin/sh
 # Copies the computed study data that isn't in git (public/flops, public/reports: flop libraries and board reports,
-# made by scripts/compute.ts) to the server, where compose.yml mounts it read-only. Run from the repo after computing.
-# Replaces the server copy in one step, so the site never sees a half-uploaded library.
+# made by scripts/compute.ts) to ~/poker-data on the server, which compose.yml mounts read-only. Run from the repo after
+# computing. Each folder is swapped in one step, so the site never sees a half-uploaded library; ~/poker-data itself
+# stays put, since the running container is bound to it.
 set -eu
 cd "$(dirname "$0")/.."
 tar czf - -C public flops reports | ssh ubuntu@64.181.220.49 '
   set -e
-  rm -rf ~/poker-data.new && mkdir -p ~/poker-data.new && tar xzf - -C ~/poker-data.new
-  rm -rf ~/poker-data.old && { [ -d ~/poker-data ] && mv ~/poker-data ~/poker-data.old || true; } && mv ~/poker-data.new ~/poker-data
-  rm -rf ~/poker-data.old && du -sh ~/poker-data'
+  cd ~/poker-data
+  rm -rf .new && mkdir .new && tar xzf - -C .new
+  for d in flops reports; do rm -rf ".old-$d"; [ -d "$d" ] && mv "$d" ".old-$d"; mv ".new/$d" "$d"; rm -rf ".old-$d"; done
+  rmdir .new && du -sh ~/poker-data'
