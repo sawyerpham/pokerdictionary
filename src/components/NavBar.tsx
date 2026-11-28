@@ -1,41 +1,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { SHELVES } from '../guides/registry';
-import { PAGES_ABOUT, TOOLS } from '../study/tools';
 import { AccountMenu } from './AccountMenu';
 import { GearIcon } from './GearIcon';
+import { MENUS } from './menus';
 import { PremiumBadge } from './PremiumBadge';
-
-interface Item {
-  id: string;
-  to: string;
-  title: string;
-  premium?: boolean;
-}
-interface Menu {
-  label: string;
-  sections: { title?: string; items: Item[] }[];
-}
-
-const tools = (group: string): Item[] =>
-  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ id: t.slug, to: `/study/${t.slug}`, title: t.title, premium: t.premium }));
-
-const pages = (...ids: string[]): Item[] => PAGES_ABOUT.filter((p) => ids.includes(p.id));
-
-// Grouped by what you came to do, the way poker study sites lay out their menus. Daily flop is its own link.
-const MENUS: Menu[] = [
-  { label: 'Practice', sections: [{ title: 'Preflop', items: tools('Preflop') }, { title: 'Postflop', items: tools('Postflop') }] },
-  {
-    label: 'Tools',
-    sections: [
-      { title: 'Solver', items: tools('Solver') },
-      { title: 'Calculators', items: pages('evaluator', 'chips') },
-    ],
-  },
-  { label: 'Review', sections: [{ items: tools('Review') }] },
-  { label: 'Guides', sections: SHELVES.map((s) => ({ title: s.title, items: s.items.map((g) => ({ id: g.slug, to: `/guides/${g.slug}`, title: g.title })) })) },
-];
 
 const linkClass = (active: boolean) =>
   `flex min-h-11 items-center gap-1 px-2.5 text-[14px] transition-colors ${active ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`;
@@ -138,9 +107,9 @@ export function NavBar() {
             // Daily flop sits right after Practice.
             return m.label === 'Practice' ? [menu, <Fragment key="daily">{plain('/study/daily', 'Daily flop')}</Fragment>] : menu;
           })}
-          {plain('/about', 'About')}
         </div>
         <div className="flex items-center justify-self-end">
+          <AccountMenu />
           <NavLink
             to="/settings"
             aria-label="Settings"
@@ -150,7 +119,6 @@ export function NavBar() {
           >
             <GearIcon />
           </NavLink>
-          <AccountMenu />
         </div>
       </nav>
     </header>

@@ -212,7 +212,6 @@ export function Coach() {
           {left !== null && <span className="text-[13px] text-[var(--text-muted)]">{left} replies left today</span>}
         </div>
         {error && <p className="mt-2 text-[15px] text-rose-400">{error}</p>}
-        <p className="text-footnote mt-3 text-[var(--text-muted)]">Screenshots and messages go to DeepSeek to write the reply; nothing is stored.</p>
       </section>
     </>
   );
