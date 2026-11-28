@@ -11,6 +11,7 @@ No-limit hold'em against customizable NPCs, or spectate them playing each other.
 - **Table**: 2–9 player NLHE cash game with side pots, animations, and an equity hint
 - **Players**: famous-style presets and archetypes, every knob editable, plus your own NPCs
 - **Spectate**: watch an all-NPC table at up to 4× speed
+- **Challenge a friend**: pick blinds, buy-in and a turn timer, send a link, and play heads-up on the same animated table as the bots (tables close after 10 minutes without a move). Signed-in players get a win rate. The server deals ([`backend/headsup.py`](backend/headsup.py)) and each browser holds a secret seat token, so neither player ever receives the other's cards before a showdown. Games live in memory and updates arrive by long polling
 - **Accounts**: sign in with Google or an emailed link, and your ranges, drill progress, settings and players follow you to every device
 - **Push/fold**: the heads-up shove-or-fold equilibrium for 1–25 bb, as a chart and a drill (computed with this site's engine by [`scripts/pushfold.ts`](scripts/pushfold.ts))
 - **Progress**: every drill answer and trainer decision, with your accuracy over time and your costliest habits

@@ -98,7 +98,8 @@ export const TOOLS: { slug: string; title: string; about: string; group: (typeof
 
 // The pages outside /study that have "?" notes and About sections too.
 export const PAGES_ABOUT = [
-  { id: 'table', to: '/table', title: 'Table', about: 'Play no-limit hold’em against computer players you can customize, or watch them play each other. A free place to try ideas, with an equity hint to check your reads.' },
+  { id: 'table', to: '/table', title: 'Play vs bots', about: 'Play no-limit hold’em against computer players you can customize, or watch them play each other. A free place to try ideas, with an equity hint to check your reads.' },
+  { id: 'friend', to: '/play/friend', title: 'Challenge a friend', about: 'Pick blinds, a buy-in and a turn timer, then send a link and play heads-up no-limit hold’em against someone you know. Real opponents adjust to you, which no chart or bot fully prepares you for.' },
   { id: 'evaluator', to: '/evaluator', title: 'Evaluator', about: 'Enter the cards at a table and see each player’s chance to win as the hand runs out. Good for settling arguments and for a feel of how far ahead or behind a hand is.' },
   { id: 'chips', to: '/chips', title: 'Chip calculator', about: 'Chip colors, values and how many of each every player starts with, for a home game. A good split keeps the game moving and makes raising the blinds simple.' },
 ];

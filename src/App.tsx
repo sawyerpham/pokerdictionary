@@ -12,6 +12,7 @@ import { SignInPage } from './pages/SignInPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { AdminPage } from './pages/AdminPage';
 import { AboutPage } from './pages/AboutPage';
+import { FriendPage } from './pages/FriendPage';
 
 function DeepDiveRedirect() {
   return <Navigate to={`/guides/${useParams().slug}`} replace />;
@@ -26,6 +27,8 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/table" element={<TablePage />} />
+        <Route path="/play/friend" element={<FriendPage />} />
+        <Route path="/play/friend/:id" element={<FriendPage />} />
           <Route path="/guides" element={<GuidesPage />} />
           <Route path="/guides/:slug" element={<GuidesPage />} />
           {/* Deep dives used to have their own page. */}

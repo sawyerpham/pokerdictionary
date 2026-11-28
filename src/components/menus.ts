@@ -7,6 +7,7 @@ interface Item {
   to: string;
   title: string;
   premium?: boolean;
+  soon?: boolean; // not built yet: shown, but not a link
 }
 interface Menu {
   label: string;
@@ -20,6 +21,17 @@ const pages = (...ids: string[]): Item[] => PAGES_ABOUT.filter((p) => ids.includ
 
 // Grouped by what you came to do, the way poker study sites lay out their menus. Daily flop is its own link.
 export const MENUS: Menu[] = [
+  {
+    label: 'Play',
+    sections: [
+      {
+        items: [
+          { id: 'table', to: '/table', title: 'Bots' },
+          { id: 'friend', to: '/play/friend', title: 'Challenge a friend' },
+        ],
+      },
+    ],
+  },
   { label: 'Practice', sections: [{ title: 'Preflop', items: tools('Preflop') }, { title: 'Postflop', items: tools('Postflop') }] },
   {
     label: 'Tools',

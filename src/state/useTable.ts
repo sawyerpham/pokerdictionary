@@ -41,7 +41,7 @@ export const boardDelay = (i: number, prevLen: number) => {
   return SWEEP_ANIM + (i - prevLen) * BOARD_STEP + (street(i) - street(prevLen)) * 900;
 };
 
-function busyFor(before: Table, after: Table): number {
+export function busyFor(before: Table, after: Table): number {
   if (!motionOn()) return 0;
   if (after.handNo !== before.handNo) return BLIND_LEAD + after.seats.filter((s) => s.inHand).length * 2 * DEAL_STEP + 450;
   let b = ACTION_ANIM;

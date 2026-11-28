@@ -75,6 +75,12 @@ const DETAILS: Record<string, { text: string[]; sources?: Ref[] }> = {
     sources: [{ by: 'DeepSeek', title: 'The company whose model writes the replies', url: 'https://www.deepseek.com' }],
   },
   table: { text: ['The game, its odds and the opponents all run in your browser.'], sources: [engine, SRC.holdem] },
+  friend: {
+    text: [
+      'The site’s server shuffles and deals, so neither browser ever has the other player’s cards; they’re shown only at a showdown. Anyone with the link can take the empty seat. A table closes after 10 minutes without a move, and when the site updates. The host picks the blinds, the buy-in and the clock; out of time, a player checks if they can and folds if not.',
+    ],
+    sources: [SRC.holdem],
+  },
   evaluator: { text: ['Win odds come from the site’s hand evaluator, run in your browser.'], sources: [engine, SRC.probability] },
   chips: { text: ['Chip counts are worked out from your buy-in, colors and values.'] },
 };

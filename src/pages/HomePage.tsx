@@ -4,9 +4,9 @@ import { PRESETS } from '../engine/profiles';
 
 const FEATURES = [
   {
-    tag: 'Table',
+    tag: 'Play',
     title: 'Play against anyone',
-    blurb: `No-limit hold'em for 2 to 9 players against ${PRESETS.filter((p) => p.group !== 'Archetypes').length} pro and celebrity styles or your own, with an equity hint and session tracking. Or just watch them play.`,
+    blurb: `No-limit hold'em for 2 to 9 players against ${PRESETS.filter((p) => p.group !== 'Archetypes').length} pro and celebrity styles or your own, with an equity hint and session tracking. Or send a friend a link and play them heads-up.`,
     to: '/table',
   },
   { tag: 'Practice', title: 'Drills and a trainer', blurb: 'Preflop charts, pot odds and equity drills, a daily flop, and flop-to-river hands graded by a solver.', to: '/study/preflop' },

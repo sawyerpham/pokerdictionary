@@ -4,8 +4,11 @@ import { MENUS } from './menus';
 
 // Every tab and subtab again, then the pages about the site. Guides are listed by level, each opening its first one.
 const COLUMNS = [
-  { title: 'Play', items: [{ to: '/table', title: 'Table' }, { to: '/study/daily', title: 'Daily flop' }] },
-  ...MENUS.filter((m) => m.label !== 'Guides').map((m) => ({ title: m.label, items: m.sections.flatMap((s) => s.items) })),
+  ...MENUS.filter((m) => m.label !== 'Guides').map((m) => ({
+    title: m.label,
+    // Daily flop is a link of its own in the top bar; here it sits with the other ways to play. Unbuilt pages are left out.
+    items: [...m.sections.flatMap((s) => s.items).filter((it) => !it.soon), ...(m.label === 'Play' ? [{ to: '/study/daily', title: 'Daily flop' }] : [])],
+  })),
   { title: 'Guides', items: SHELVES.map((s) => ({ to: `/guides/${s.items[0].slug}`, title: s.title })) },
   { title: 'Site', items: [{ to: '/about', title: 'About' }, { to: '/privacy', title: 'Privacy' }, { to: '/settings', title: 'Settings' }] },
 ];

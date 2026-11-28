@@ -51,13 +51,12 @@ export function NavBar() {
           Poker Dictionary
         </NavLink>
         <div className="order-last col-span-2 flex flex-wrap items-center justify-center lg:order-none lg:col-span-1">
-          {plain('/table', 'Table')}
           {MENUS.map((m) => {
             const items = m.sections.flatMap((s) => s.items);
             const here = items.some((it) => pathname === it.to) || (m.label === 'Guides' && pathname.startsWith('/guides'));
             const id = `menu-${m.label.toLowerCase()}`;
             const menu = (
-              <div key={m.label}>
+              <div key={m.label} className="lg:relative">
                 <button
                   type="button"
                   aria-expanded={open === m.label}
@@ -68,14 +67,11 @@ export function NavBar() {
                   onClick={() => (mouse.current ? setOpen(m.label) : setOpen((o) => (o === m.label ? undefined : m.label)))}
                 >
                   {m.label}
-                  <svg viewBox="0 0 10 6" aria-hidden className={`h-1.5 w-2.5 transition-transform ${open === m.label ? 'rotate-180' : ''}`}>
-                    <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
                 </button>
                 {open === m.label && (
                   <div
                     id={id}
-                    className={`absolute inset-x-2 top-full max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[#0f1011] p-2 shadow-2xl shadow-black/60 lg:inset-x-auto lg:left-1/2 lg:w-max lg:-translate-x-1/2`}
+                    className={`absolute inset-x-2 top-full max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[#0f1011] p-2 shadow-2xl shadow-black/60 lg:inset-x-auto lg:left-1/2 lg:mt-2.5 lg:w-max lg:-translate-x-1/2`}
                   >
                     <div className="grid grid-cols-1 gap-x-1 gap-y-3 sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none lg:auto-cols-[13rem]">
                       {m.sections.map((s, k) => (
@@ -84,6 +80,12 @@ export function NavBar() {
                           <ul>
                             {s.items.map((it) => (
                               <li key={it.to} className="flex items-center gap-1">
+                                {it.soon ? (
+                                  <span aria-disabled className="flex min-h-9 flex-1 items-center gap-1.5 px-2.5 text-[14px] font-medium text-[var(--text-muted)]">
+                                    {it.title}
+                                    <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px] font-semibold">Soon</span>
+                                  </span>
+                                ) : (
                                 <NavLink
                                   to={it.to}
                                   onClick={close}
@@ -94,6 +96,7 @@ export function NavBar() {
                                   {it.title}
                                   {it.premium && <PremiumBadge />}
                                 </NavLink>
+                                )}
                               </li>
                             ))}
                           </ul>

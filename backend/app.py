@@ -14,7 +14,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # The poker engine and the solver run in the browser. The server serves the built site and keeps accounts:
 # sign-in (Google or an emailed link), sessions, each user's synced data, account types, and the AI coach.
@@ -64,6 +64,8 @@ with closing(db()) as con, con:
         -- Who changed whose account type. Ids, not emails, so deleting an account leaves no personal data here.
         CREATE TABLE IF NOT EXISTS role_changes (at INTEGER NOT NULL, by_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
                                                  old TEXT NOT NULL, new TEXT NOT NULL);
+        -- Finished heads-up matches against a friend, one row per signed-in player.
+        CREATE TABLE IF NOT EXISTS hu_results (user_id INTEGER NOT NULL, won INTEGER NOT NULL, at INTEGER NOT NULL);
     ''')
     if 'role' not in [c['name'] for c in con.execute('PRAGMA table_info(users)')]:
         con.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'default'")
@@ -187,7 +189,7 @@ def logout(request: Request, response: Response):
 def delete_account(request: Request, response: Response):
     with closing(db()) as con, con:
         user = current_user(con, request)
-        for table in ('docs', 'sessions', 'coach_uses', 'role_changes'):
+        for table in ('docs', 'sessions', 'coach_uses', 'role_changes', 'hu_results'):
             con.execute(f'DELETE FROM {table} WHERE user_id = ?', (user['id'],))
         con.execute('DELETE FROM users WHERE id = ?', (user['id'],))
     response.delete_cookie('session')
@@ -489,6 +491,181 @@ def coach(body: CoachRequest, request: Request):
             con.execute('DELETE FROM coach_uses WHERE rowid = ?', (use,))
         raise HTTPException(502, "The coach couldn't answer just now. Try again in a minute.")
     return {'reply': reply, 'left': max(0, COACH_DAILY - used) if role_of(user) == 'premium' else None}
+
+# ------------------------------------------------------------------ heads-up against a friend
+# Games live in this process's memory (one uvicorn worker): a restart ends them. Each seat has a secret token that only
+# its player's browser holds; the link itself only lets someone take the empty seat.
+import asyncio  # noqa: E402
+import hmac  # noqa: E402
+
+import headsup  # noqa: E402
+
+GAMES: dict[str, headsup.Game] = {}
+MAX_GAMES = 500
+GAME_IDLE = 10 * 60  # a table with no move for this long closes
+POLL_WAIT = 25  # seconds a state request waits for something to change
+
+
+class Player(BaseModel):
+    name: str = Field('', max_length=100)
+
+
+class Setup(Player):
+    bb: int = 10
+    buy_in: int = Field(100, alias='buyIn')  # in big blinds
+    timer: int = 30
+
+
+class Move(BaseModel):
+    type: Literal['fold', 'check', 'call', 'raise']
+    to: int | None = Field(None, ge=0, le=1_000_000)
+
+
+def seat_name(name: str, fallback: str) -> str:
+    name = re.sub(r'\s+', ' ', ''.join(ch for ch in name if ch.isprintable())).strip()[:20]
+    return name or fallback
+
+
+def close_idle() -> None:
+    now = time.time()
+    for gid in [gid for gid, g in GAMES.items() if now - g.last_move > GAME_IDLE]:
+        del GAMES[gid]
+
+
+def find_game(game_id: str) -> headsup.Game:
+    close_idle()
+    g = GAMES.get(game_id)
+    if not g:
+        raise HTTPException(404, 'This game has ended or never existed.')
+    return g
+
+
+def seat_of(g: headsup.Game, request: Request) -> int | None:
+    token = request.headers.get('x-seat', '')
+    if token:
+        d = digest(token)
+        for i, s in enumerate(g.seats):
+            if hmac.compare_digest(s.token, d):
+                return i
+    return None
+
+
+def new_seat(name: str) -> tuple[headsup.Seat, str]:
+    token = secrets.token_urlsafe(24)
+    return headsup.Seat(name=name, token=digest(token), seen=time.time()), token
+
+
+def signed_in_id(request: Request) -> int | None:
+    """The account playing, if any: results only count for signed-in players."""
+    try:
+        with closing(db()) as con:
+            return current_user(con, request)['id']
+    except HTTPException:
+        return None
+
+
+def record_result(g: headsup.Game) -> None:
+    """Once a match ends, a played game for each signed-in player, and a win for whoever has the chips."""
+    if g.street != 'over' or g.recorded:
+        return
+    g.recorded = True
+    rows = [(s.user, int(s.stack > 0), int(time.time())) for s in g.seats if s.user is not None]
+    # Two seats on one account (playing yourself) don't count.
+    if rows and len({r[0] for r in rows}) == len(rows):
+        with closing(db()) as con, con:
+            con.executemany('INSERT INTO hu_results VALUES (?, ?, ?)', rows)
+
+
+def table_settings(g: headsup.Game) -> dict:
+    return {'sb': g.sb, 'bb': g.bb, 'start': g.start, 'timer': g.timer}
+
+
+# These handlers are async so they all run on the one event loop, one at a time: no two moves can interleave.
+@app.get('/api/hu/stats')
+def hu_stats(request: Request):
+    with closing(db()) as con:
+        user = current_user(con, request)
+        played, won = con.execute('SELECT COUNT(*), COALESCE(SUM(won), 0) FROM hu_results WHERE user_id = ?', (user['id'],)).fetchone()
+    return {'played': played, 'won': won}
+
+
+@app.post('/api/hu')
+async def hu_create(body: Setup, request: Request):
+    if body.bb not in headsup.STAKES or body.buy_in not in headsup.BUY_INS or body.timer not in headsup.TIMERS:
+        raise HTTPException(400, 'Pick blinds, a buy-in and a clock from the lists.')
+    close_idle()
+    if len(GAMES) >= MAX_GAMES:
+        raise HTTPException(503, 'Too many games right now. Try again in a while.')
+    with closing(db()) as con, con:
+        if too_many(con, f'hu:{client_ip(request)}', 20, 3600):
+            raise HTTPException(429, 'Too many new games from here. Try again in a while.')
+    seat, token = new_seat(seat_name(body.name, 'Player 1'))
+    seat.user = signed_in_id(request)
+    gid = secrets.token_urlsafe(9)
+    g = headsup.Game(id=gid, seats=[seat], sb=headsup.STAKES[body.bb], bb=body.bb, start=body.buy_in * body.bb, timer=body.timer)
+    g.min_raise = g.bb
+    seat.stack = g.start
+    GAMES[gid] = g
+    return {'id': gid, 'token': token}
+
+
+@app.post('/api/hu/{game_id}/join')
+async def hu_join(game_id: str, body: Player, request: Request):
+    g = find_game(game_id)
+    if len(g.seats) == 2:
+        raise HTTPException(409, 'Both seats are taken.')
+    seat, token = new_seat(seat_name(body.name, 'Player 2'))
+    if seat.name == g.seats[0].name:
+        seat.name = f'{seat.name} 2'[:22]
+    seat.stack = g.start
+    seat.user = signed_in_id(request)
+    g.seats.append(seat)
+    g.last_move = time.time()
+    g.start_hand()
+    return {'token': token}
+
+
+@app.get('/api/hu/{game_id}')
+async def hu_state(game_id: str, request: Request, since: int = -1):
+    g = find_game(game_id)
+    me = seat_of(g, request)
+    if me is None:
+        # Someone with the link but no seat: enough to offer the empty one.
+        return {'id': g.id, 'seated': False, 'open': len(g.seats) < 2, 'host': g.seats[0].name, **table_settings(g)}
+    deadline = time.time() + POLL_WAIT
+    while True:
+        g.seats[me].seen = time.time()
+        g.advance()
+        record_result(g)
+        close_idle()
+        if g.version > since or time.time() >= deadline or GAMES.get(game_id) is not g:
+            break
+        await asyncio.sleep(0.25)
+    return {'seated': True, **g.view(me)}
+
+
+@app.post('/api/hu/{game_id}/act')
+async def hu_act(game_id: str, move: Move, request: Request):
+    g = find_game(game_id)
+    me = seat_of(g, request)
+    if me is None:
+        raise HTTPException(403, 'You are not seated in this game.')
+    if not g.act(me, move.type, move.to):
+        raise HTTPException(409, "That move isn't available right now.")
+    record_result(g)
+    return g.view(me)
+
+
+@app.post('/api/hu/{game_id}/rematch')
+async def hu_rematch(game_id: str, request: Request):
+    g = find_game(game_id)
+    me = seat_of(g, request)
+    if me is None:
+        raise HTTPException(403, 'You are not seated in this game.')
+    if not g.rematch():
+        raise HTTPException(409, 'The match is still going.')
+    return g.view(me)
+
 
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 

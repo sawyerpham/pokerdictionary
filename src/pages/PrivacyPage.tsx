@@ -49,6 +49,13 @@ export function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="Playing a friend">
+        <p>
+          A heads-up table keeps the name you type and the cards and chips of the match in the server’s memory while you play. Nothing about it
+          is written to disk, and the table is forgotten 10 minutes after the last move or when the site updates.
+        </p>
+      </Section>
+
       <Section title="AI coach (Premium accounts)">
         <p>
           When you ask the coach about a hand, your screenshots and messages are sent to DeepSeek, an AI provider, to write the reply. They aren’t
