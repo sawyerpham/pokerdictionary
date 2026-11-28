@@ -10,7 +10,7 @@ import { around, Grid } from '../guides/Preflop';
 import { expandRange, RFI } from '../guides/rfi';
 import { record } from '../state/progressStore';
 import { actionColors, mixBackground } from './spots';
-import { BUTTON, Field, PANEL } from './ui';
+import { BUTTON, Field, Mix, PANEL, Stats } from './ui';
 
 const SEATS = ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
 const at = new Map(HANDS.map((h, i) => [h, i]));
@@ -80,23 +80,28 @@ function Chart({ t, spot, node, mark }: { t: Table; spot: string; node: number; 
         {shown ? (
           reach(t, spot, node, i) > 0 ? (
             <>
-              <strong>{shown}</strong>:{' '}
-              {names
-                .map((a, k) => [a, n.freq[k][i]] as const)
-                .filter(([, f]) => f > 0)
-                .map(([a, f]) => `${a.split(' ')[0]} ${f}%`)
-                .join(', ')}
-              <br />
-              <span className="text-[var(--text-muted)]">
-                Worth against folding: {names.slice(1).map((a, k) => `${a.split(' ')[0]} ${n.ev[k + 1][i] >= 0 ? '+' : '−'}${Math.abs(n.ev[k + 1][i] / 100).toFixed(2)} bb`).join(', ')}
-              </span>
+              <strong>{shown}</strong>{' '}
+              <Mix
+                items={names
+                  .map((a, k) => ({ k, a, f: n.freq[k][i] }))
+                  .map(({ k, a, f }) => ({
+                    label: a.split(' ')[0],
+                    value: `${f}%`,
+                    color: colors[k],
+                    note: k ? `${n.ev[k][i] >= 0 ? '+' : '−'}${Math.abs(n.ev[k][i] / 100).toFixed(2)} bb` : undefined,
+                  }))}
+              />
+              <span className="mt-1 block text-[13px] text-[var(--text-muted)]">bb is what each play is worth against folding</span>
             </>
           ) : (
             `${shown}: not in the range that gets here`
           )
         ) : (
           <>
-            {hero(t, spot, node)} {FACING_LABEL[n.facing].toLowerCase()}: {names.map((a, k) => `${a.split(' ')[0].toLowerCase()} ${(mix[k] * 100).toFixed(0)}%`).join(' · ')}
+            <span className="mb-1.5 block">
+              <strong>{hero(t, spot, node)}</strong> {FACING_LABEL[n.facing].toLowerCase()}
+            </span>
+            <Mix items={names.map((a, k) => ({ label: a.split(' ')[0], value: `${(mix[k] * 100).toFixed(0)}%`, color: colors[k] }))} />
           </>
         )}
       </p>
@@ -223,9 +228,12 @@ export function Facing() {
         </label>
         {mode === 'drill' && <Segmented label="Spots" value={only} options={FILTER} onChange={(o) => (setOnly(o), next(o))} />}
         {mode === 'drill' && score.total > 0 && (
-          <span className="text-[15px] text-[var(--text-muted)] tabular-nums">
-            {score.right}/{score.total} right{score.lost > 0 && ` · ${score.lost.toFixed(2)} bb given up`}
-          </span>
+          <Stats
+            items={[
+              { value: `${score.right}/${score.total}`, label: 'right' },
+              score.lost > 0 && { value: `${score.lost.toFixed(2)} bb`, label: 'given up', tone: 'text-rose-300' },
+            ]}
+          />
         )}
       </div>
       {error && <p className="mb-3 px-2 text-[15px] text-rose-400">{error}</p>}
@@ -290,11 +298,17 @@ export function Facing() {
                   {lost === 0 ? 'Correct' : 'Not quite'}: best is {names[best].toLowerCase()}
                   {lost > 0 && `. That cost ${lost.toFixed(2)} bb.`}
                 </p>
-                <p className="text-[15px] text-[var(--text-muted)] tabular-nums">
-                  {q.hand} here:{' '}
-                  {names
-                    .map((a, k) => `${a.split(' ')[0].toLowerCase()} ${n.freq[k][i]}% (${k === 0 ? '0' : `${evs[k] >= 0 ? '+' : '−'}${Math.abs(evs[k]).toFixed(2)}`} bb)`)
-                    .join(' · ')}
+                <p className="text-[15px] text-[var(--text-muted)]">
+                  <span className="mb-1.5 block">
+                    <strong className="text-[var(--text-primary)]">{q.hand}</strong> here
+                  </span>
+                  <Mix
+                    items={names.map((a, k) => ({
+                      label: a.split(' ')[0],
+                      value: `${n.freq[k][i]}%`,
+                      note: `${k === 0 ? '0' : `${evs[k] >= 0 ? '+' : '−'}${Math.abs(evs[k]).toFixed(2)}`} bb`,
+                    }))}
+                  />
                 </p>
                 <button type="button" onClick={() => next()} className={`${BUTTON} mt-1 bg-[var(--accent)] text-white`}>
                   Next hand

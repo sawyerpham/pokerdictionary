@@ -861,13 +861,19 @@ export function TablePage() {
       {/* Hint + status */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-sm">
         {mode === 'play' && !setup ? <EquityHint t={t} youIdx={youIdx} /> : <span />}
-        <span className="text-xs text-[var(--text-muted)] tabular-nums">
-          {t.street === 'done' && t.winners.length
-            ? t.winners.map((w) => `${name(w.seat)} ${w.seat === youIdx ? 'win' : 'wins'} ${money(w.amount)}${w.hand ? ` · ${w.hand}` : ''}`).join(' · ')
-            : t.handNo
-              ? `Hand ${t.handNo}`
-              : ''}
-        </span>
+        {t.street === 'done' && t.winners.length ? (
+          <span className="flex flex-wrap justify-end gap-1.5">
+            {t.winners.map((w) => (
+              <span key={w.seat} className="inline-flex min-h-7 items-center gap-1.5 rounded-[8px] bg-emerald-400/10 px-2 text-[13px] text-emerald-200 ring-1 ring-emerald-400/30 ring-inset">
+                <span className="text-[11px] font-semibold tracking-[0.06em] text-[var(--text-muted)] uppercase">{name(w.seat)}</span>
+                {w.seat === youIdx ? 'Win' : 'Wins'} <strong className="font-semibold tabular-nums">{money(w.amount)}</strong>
+                {w.hand && <span className="text-[var(--text-muted)]">{w.hand}</span>}
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="text-xs text-[var(--text-muted)] tabular-nums">{t.handNo ? `Hand ${t.handNo}` : ''}</span>
+        )}
       </div>
 
       {/* Actions */}

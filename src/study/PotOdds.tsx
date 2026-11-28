@@ -117,10 +117,10 @@ export function PotOdds() {
       <section className={PANEL}>
         {mode === 'call' ? (
           <>
-            <div className="flex flex-wrap items-end justify-center gap-x-8 gap-y-3">
-              <Cards cards={spot.hero} label="You" />
-              <Cards cards={spot.board} label={spot.board.length === 3 ? 'Flop' : 'Turn'} />
+            <div className="flex flex-col items-center gap-3">
               <Cards cards={spot.villain} label="Their hand" />
+              <Cards cards={spot.board} label={spot.board.length === 3 ? 'Flop' : 'Turn'} />
+              <Cards cards={spot.hero} label="You" />
             </div>
             <p className="mt-4 text-center text-[17px]">
               The pot is <strong>{bb(spot.pot)}</strong>. They go all-in for <strong>{bb(spot.bet)}</strong>. Call or fold?

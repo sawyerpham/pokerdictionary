@@ -5,7 +5,7 @@ import { solverCard } from '../engine/ranges';
 import { BB, loadPacks } from '../solver/library';
 import { useProgress } from '../state/progressStore';
 import { amount, grade, label, puzzle, type Puzzle } from './puzzle';
-import { BUTTON, PANEL } from './ui';
+import { ActionLog, BUTTON, InfoBar, PANEL } from './ui';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const hash = (s: string) => [...s].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
@@ -29,8 +29,8 @@ export function PuzzleCard({ p, header, chosen, onChoose, footer }: { p: Puzzle;
   const loss = chosen === undefined || chosen < 0 ? undefined : ((evs[best] - evs[chosen]) / lib.pack.pot) * 100;
   return (
     <section className={PANEL}>
-      <p className="text-center text-[15px] text-[var(--text-muted)]">{header}</p>
-      <div className="my-4 flex flex-wrap items-end justify-center gap-x-8 gap-y-3">
+      {header}
+      <div className="my-4 flex flex-col items-center gap-3">
         <div className="flex flex-col items-center gap-1">
           <div className="flex gap-1">
             {lib.board.map((c) => (
@@ -48,7 +48,7 @@ export function PuzzleCard({ p, header, chosen, onChoose, footer }: { p: Puzzle;
           <span className="text-[13px] text-[var(--text-muted)]">You · {lib.pack.seats[hero]}</span>
         </div>
       </div>
-      <p className="min-h-6 text-center text-[15px] text-[var(--text-muted)]">{p.log.join(' · ') || 'You act first.'}</p>
+      <ActionLog log={p.log} empty="You act first." />
 
       {chosen === undefined ? (
         <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -86,6 +86,29 @@ export function PuzzleCard({ p, header, chosen, onChoose, footer }: { p: Puzzle;
   );
 }
 
+/** "3 🔥". When it goes up, the old number gives way to a green arrow that swings up, then the new number. */
+function Streak({ days, from }: { days: number; from?: number }) {
+  const up = from !== undefined && from < days;
+  return (
+    <span title={`${days}-day streak`} aria-label={`${days}-day streak`} className="inline-flex items-center gap-1 text-[15px] font-semibold text-[var(--text-primary)]">
+      <span aria-hidden className="inline-grid h-6 min-w-4 place-items-center overflow-hidden tabular-nums">
+        {up ? (
+          <>
+            <span className="streak-old col-start-1 row-start-1">{from}</span>
+            <svg viewBox="0 0 16 16" className="streak-arrow col-start-1 row-start-1 h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" />
+            </svg>
+            <span className="streak-new col-start-1 row-start-1">{days}</span>
+          </>
+        ) : (
+          days
+        )}
+      </span>
+      <span aria-hidden>🔥</span>
+    </span>
+  );
+}
+
 /** One flop decision a day, the same for everyone, graded by the solver. */
 export function DailyFlop() {
   const { daily, add } = useProgress();
@@ -93,6 +116,7 @@ export function DailyFlop() {
   const [p, setP] = useState<Puzzle>();
   const [error, setError] = useState<string>();
   const [chosen, setChosen] = useState<number>();
+  const [before, setBefore] = useState<number>(); // the streak before today's answer, to animate it going up
   const done = daily.find((d) => d.date === date);
 
   useEffect(() => {
@@ -109,12 +133,19 @@ export function DailyFlop() {
     if (done) return;
     const { evs, best } = grade(p);
     setChosen(k);
+    setBefore(days);
     add('daily', { date, loss: ((evs[best] - evs[k]) / p.lib.pack.pot) * 100 });
   };
   return (
     <PuzzleCard
       p={p}
-      header={`${date} · ${p.lib.pack.title} · streak ${days} day${days === 1 ? '' : 's'}`}
+      header={
+        <InfoBar
+          left={new Date(`${date}T00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+          center={p.lib.pack.title}
+          right={<Streak days={days} from={before} />}
+        />
+      }
       chosen={chosen ?? (done ? -1 : undefined)}
       onChoose={choose}
       footer={

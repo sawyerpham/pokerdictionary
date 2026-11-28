@@ -7,7 +7,7 @@ import { Grid } from '../guides/Preflop';
 import { actionLabel, nodeAt, solveSpot, stopSolving, type NodeInfo, type Progress, type Solved } from '../solver/client';
 import { findRange, useStudy } from '../state/studyStore';
 import { actionColors, byClass, cardName, DEFAULTS, holesOf, mixBackground, PLAYER, rangeMix, SIZES, STREETS, type ClassRow } from './spots';
-import { BUTTON, CardText, Field, PANEL, RangeSelect } from './ui';
+import { BUTTON, CardText, Field, Mix, PANEL, RangeSelect } from './ui';
 
 const randomBoard = () => shuffledDeck().slice(0, 5);
 const pct = (chips: number, pot: number) => `${((chips / pot) * 100).toFixed(2)}% of the pot`;
@@ -257,10 +257,20 @@ function Tree({
               </button>
             ))}
           </div>
-          <p className="mb-2 min-h-6 text-center text-[15px] tabular-nums">
-            {detail
-              ? `${hover}: ${node.actions.map((a, i) => `${actionLabel(a)} ${(detail.mix[i] * 100).toFixed(0)}%`).join(' · ')} · EV ${detail.ev.toFixed(1)}`
-              : `${PLAYER[player]}'s range. Hover or tap a hand for its mix and EV.`}
+          <p className="mb-2 min-h-8 text-center text-[15px] tabular-nums">
+            {detail ? (
+              <>
+                <strong>{hover}</strong>{' '}
+                <Mix
+                  items={[
+                    ...node.actions.map((a, i) => ({ label: actionLabel(a), value: `${(detail.mix[i] * 100).toFixed(0)}%`, color: colors[i] })),
+                    { label: 'EV', value: detail.ev.toFixed(1) },
+                  ]}
+                />
+              </>
+            ) : (
+              `${PLAYER[player]}'s range. Hover or tap a hand for its mix and EV.`
+            )}
           </p>
           <Grid
             onHover={(h) => h && setHover(h)} // keep the last hand so its combos stay readable

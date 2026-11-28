@@ -8,7 +8,7 @@ import { BB, flopNode, loadFlop, loadPacks, type Library, type Pack } from '../s
 import { record } from '../state/progressStore';
 import { findRange, useStudy } from '../state/studyStore';
 import { cardName, DEFAULTS, holesOf, PLAYER, SIZES, STREETS } from './spots';
-import { BUTTON, Field, PANEL, RangeSelect } from './ui';
+import { ActionLog, BUTTON, Stats, Field, PANEL, RangeSelect } from './ui';
 
 interface Decision {
   actions: string[];
@@ -116,7 +116,7 @@ async function advance(start: Hand, onProgress: (p: Progress) => void): Promise<
     } else {
       const n = hand.holes[villain].length;
       step = pickWeighted(node.actions.map((_, k) => node.strategy![k * n + hand.villainIdx]));
-      log = [...hand.log, `Villain: ${label(node.actions[step], hand.bb).toLowerCase()}`];
+      log = [...hand.log, `Opponent: ${label(node.actions[step], hand.bb).toLowerCase()}`];
     }
     hand = { ...hand, node: await goto(hand, [...node.history, step]), log };
   }
@@ -295,7 +295,14 @@ export function Trainer() {
             {progress
               ? `Solving${hand?.lib ? ' the turn' : ''}… ${progress.iterations} iterations${Number.isNaN(progress.exploitability) ? '' : ` · ${((progress.exploitability / (hand?.pot0 ?? DEFAULTS.pot)) * 100).toFixed(1)}% of the pot from done`}`
               : session.decisions
-                ? `${session.decisions} decisions · ${(session.loss / session.decisions).toFixed(1)}% of the pot lost per decision`
+                ? (
+                  <Stats
+                    items={[
+                      { value: session.decisions, label: 'decisions' },
+                      { value: `${(session.loss / session.decisions).toFixed(1)}%`, label: 'of the pot lost per decision' },
+                    ]}
+                  />
+                )
                 : street === 3
                   ? `Six-max, 100 bb. ${pack ? `${pack.title} before the flop.` : ''} Flop bets are a third of the pot.`
                   : `Pot ${DEFAULTS.pot}, ${DEFAULTS.stack} behind; bets ${SIZES[size].bets} of the pot, raises ${SIZES[size].raises}.`}
@@ -306,8 +313,8 @@ export function Trainer() {
 
       {hand && (
         <section className={`${PANEL} mt-4`}>
-          <div className="flex flex-wrap items-end justify-center gap-x-8 gap-y-3">
-            <Seat label={`Villain · ${hand.seats[1 - hand.hero]}`} cards={over ? hand.holes[1 - hand.hero][hand.villainIdx] : undefined} />
+          <div className="flex flex-col items-center gap-3">
+            <Seat label={`Opponent · ${hand.seats[1 - hand.hero]}`} cards={over ? hand.holes[1 - hand.hero][hand.villainIdx] : undefined} />
             <div className="flex flex-col items-center gap-1">
               <div className="flex gap-1">
                 {[0, 1, 2, 3, 4].map((i) => (board[i] === undefined ? <PlayingCard key={i} size="md" /> : <PlayingCard key={i} card={board[i]} size="md" />))}
@@ -317,7 +324,9 @@ export function Trainer() {
             <Seat label={`You · ${hand.seats[hand.hero]}`} cards={hand.holes[hand.hero][hand.heroIdx]} />
           </div>
 
-          <p className="mt-4 min-h-6 text-center text-[15px] text-[var(--text-muted)]">{hand.log.join(' · ') || 'You act first.'}</p>
+          <div className="mt-4">
+            <ActionLog log={hand.log} empty="You act first." />
+          </div>
 
           {heroTurn && (
             <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -399,10 +408,10 @@ function result(hand: Hand, board: Card[]): string {
   const pot = amount(hand.pot0 + hand.node.bets[0] + hand.node.bets[1], hand.bb);
   const called = amount(hand.pot0 + 2 * Math.min(...hand.node.bets), hand.bb); // a fold hands back the bet nobody called
   const folded = hand.log.findLast((l) => l.endsWith(': fold'));
-  if (folded === 'You: fold') return `You fold. Villain takes ${called}.`;
-  if (folded === 'Villain: fold') return `Villain folds. You take ${called}.`;
+  if (folded === 'You: fold') return `You fold. Your opponent takes ${called}.`;
+  if (folded === 'Opponent: fold') return `Your opponent folds. You take ${called}.`;
   const mine = evaluate([...hand.holes[hand.hero][hand.heroIdx], ...board]);
   const theirs = evaluate([...hand.holes[1 - hand.hero][hand.villainIdx], ...board]);
   if (mine === theirs) return `Split pot: ${describe(mine)}.`;
-  return mine > theirs ? `You win ${pot} with ${describe(mine)}.` : `Villain wins ${pot} with ${describe(theirs)}.`;
+  return mine > theirs ? `You win ${pot} with ${describe(mine)}.` : `Your opponent wins ${pot} with ${describe(theirs)}.`;
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { record } from '../state/progressStore';
 import { PuzzleCard } from './DailyFlop';
 import { grade, puzzle, type Puzzle } from './puzzle';
-import { BUTTON } from './ui';
+import { BUTTON, InfoBar } from './ui';
 
 const PACK = 'deep-BTN-BB'; // solved with two bet sizes a street
 
@@ -36,7 +36,19 @@ export function SizingDrill() {
     <>
       <PuzzleCard
         p={p}
-        header={`${p.lib.pack.title.replace(' (2 sizes)', '')} · bets of a third or three quarters of the pot${score.n ? ` · ${score.n} spots, ${(score.loss / score.n).toFixed(1)}% of the pot lost per spot` : ''}`}
+        header={
+          <InfoBar
+            left="Bets ⅓ or ¾ pot"
+            center={p.lib.pack.title.replace(' (2 sizes)', '')}
+            right={
+              score.n ? (
+                <>
+                  <strong className="text-[var(--text-primary)]">{score.n}</strong> spots, <strong className="text-[var(--text-primary)]">{(score.loss / score.n).toFixed(1)}%</strong> lost each
+                </>
+              ) : undefined
+            }
+          />
+        }
         chosen={chosen}
         onChoose={choose}
         footer={

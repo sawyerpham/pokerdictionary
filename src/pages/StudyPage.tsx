@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useParams } from 'react-router-dom';
+import { Help } from '../components/Help';
 import { ToolCards } from '../components/ToolCards';
 import { useAccount } from '../state/account';
 import { TOOLS } from '../study/tools';
@@ -43,8 +44,10 @@ export function StudyPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-2 py-3 sm:px-4">
       <div className="mb-4 px-2">
         {t.slug !== 'daily' && <p className="text-[14px] text-[var(--text-muted)]">{CRUMB[t.group]}</p>}
-        <h1 className="text-title-2">{t.title}</h1>
-        <p className="text-[15px] text-[var(--text-muted)]">{t.desc}</p>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-title-2">{t.title}</h1>
+          <Help title={t.title} about={t.about} />
+        </div>
       </div>
       <Suspense fallback={<p className="px-2 text-[15px] text-[var(--text-muted)]">Loading…</p>}>
         <Tool key={`${t.slug}-${pulled}`} />

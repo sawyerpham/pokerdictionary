@@ -6,7 +6,7 @@ import { equityVsRange, rangeShare } from '../engine/ranges';
 import { Grid } from '../guides/Preflop';
 import { record } from '../state/progressStore';
 import { findRange, useStudy } from '../state/studyStore';
-import { BUTTON, PANEL, RangeSelect, rangeCell } from './ui';
+import { BUTTON, PANEL, RangeSelect, rangeCell, Stats } from './ui';
 
 const STREETS = [
   { value: 3, label: 'Flop' },
@@ -67,15 +67,7 @@ export function EquityDrill() {
           />
         </div>
 
-        <div className="flex flex-wrap items-end justify-center gap-x-8 gap-y-3">
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex gap-1">
-              {q.hole.map((c) => (
-                <PlayingCard key={c} card={c} size="md" />
-              ))}
-            </div>
-            <span className="text-[13px] text-[var(--text-muted)]">You</span>
-          </div>
+        <div className="flex flex-col items-center gap-3">
           <div className="flex flex-col items-center gap-1">
             <div className="flex gap-1">
               {q.board.map((c) => (
@@ -83,6 +75,14 @@ export function EquityDrill() {
               ))}
             </div>
             <span className="text-[13px] text-[var(--text-muted)]">Board</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex gap-1">
+              {q.hole.map((c) => (
+                <PlayingCard key={c} card={c} size="md" />
+              ))}
+            </div>
+            <span className="text-[13px] text-[var(--text-muted)]">You</span>
           </div>
         </div>
         <p className="mt-3 text-center text-[15px] text-[var(--text-muted)]">
@@ -125,9 +125,12 @@ export function EquityDrill() {
               </button>
             )}
             {misses.length > 0 && (
-              <p className="text-[13px] text-[var(--text-muted)] tabular-nums">
-                {misses.length} guessed · off by {average.toFixed(1)} points on average
-              </p>
+              <Stats
+                items={[
+                  { value: misses.length, label: 'guessed' },
+                  { value: `±${average.toFixed(1)}`, label: 'points off on average' },
+                ]}
+              />
             )}
           </div>
         )}

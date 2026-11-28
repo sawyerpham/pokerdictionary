@@ -148,3 +148,65 @@ math {
     inset 0 1px 0 rgb(255 255 255 / 0.1),
     0 0 0 1px rgb(255 255 255 / 0.04);
 }
+
+/* Daily streak going up: the old number drops away, a green arrow swings from pointing right to up and lifts off,
+   then the new number rises in. */
+.streak-old {
+  animation: streak-old 1.5s ease forwards;
+}
+.streak-arrow {
+  animation: streak-arrow 1.5s ease forwards;
+}
+.streak-new {
+  animation: streak-new 1.5s ease forwards;
+}
+@keyframes streak-old {
+  0%,
+  18% {
+    opacity: 1;
+    transform: none;
+  }
+  30%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+@keyframes streak-arrow {
+  0%,
+  20% {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.5);
+  }
+  32% {
+    opacity: 1;
+    transform: rotate(90deg) scale(1);
+  }
+  55%,
+  68% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+  82%,
+  100% {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+}
+@keyframes streak-new {
+  0%,
+  72% {
+    opacity: 0;
+    transform: translateY(110%);
+    color: #34d399;
+  }
+  88% {
+    opacity: 1;
+    transform: translateY(-10%);
+    color: #34d399;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -6,7 +6,7 @@ import { HANDS } from '../engine/pushfold';
 import { Grid } from '../guides/Preflop';
 import { expandRange, RFI } from '../guides/rfi';
 import { record } from '../state/progressStore';
-import { BUTTON, Field, PANEL } from './ui';
+import { BUTTON, Field, PANEL, Stats } from './ui';
 
 // The charts to recall: each seat's opening range, and against an open, the hands that 3-bet and the hands that play
 // on (call or 3-bet) more than half the time.
@@ -87,13 +87,18 @@ export function RangeQuiz() {
       <p className="mb-2 min-h-6 text-center text-[15px] tabular-nums">
         {checked ? (
           <>
-            <strong className={score >= 0.9 ? 'text-emerald-400' : score >= 0.75 ? 'text-amber-300' : 'text-rose-400'}>{Math.round(score * 100)}%</strong> ·{' '}
-            {missed.length} missed · {extra.length} extra
+            <Stats
+              items={[
+                { value: `${Math.round(score * 100)}%`, label: 'score', tone: score >= 0.9 ? 'text-emerald-400' : score >= 0.75 ? 'text-amber-300' : 'text-rose-400' },
+                { value: missed.length, label: 'missed' },
+                { value: extra.length, label: 'extra' },
+              ]}
+            />
           </>
         ) : hover ? (
           hover
         ) : (
-          `Paint every hand in “${chart.label}” · ${painted.size} painted`
+          `Paint every hand in “${chart.label}”. ${painted.size} painted so far.`
         )}
       </p>
       <div

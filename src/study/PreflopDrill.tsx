@@ -8,7 +8,7 @@ import { SEATS } from '../guides/rfi';
 import { SRC } from '../guides/sources';
 import { record } from '../state/progressStore';
 import { useStudy, type Miss } from '../state/studyStore';
-import { BUTTON, PANEL } from './ui';
+import { BUTTON, PANEL, Stats } from './ui';
 
 const REVIEW = 0.35; // chance the next question is one you missed before
 
@@ -83,9 +83,12 @@ export function PreflopDrill() {
               className="w-full accent-[var(--accent)]"
             />
           </label>
-          <span className="text-[15px] text-[var(--text-muted)] tabular-nums">
-            {score.right}/{score.total} right{review > 0 && ` · ${review} to review`}
-          </span>
+          <Stats
+            items={[
+              { value: `${score.right}/${score.total}`, label: 'right' },
+              review > 0 && { value: review, label: 'to review', tone: 'text-amber-300' },
+            ]}
+          />
         </div>
 
         <div className="rounded-[12px] bg-[var(--bg-main)]/50 p-3 ring-1 ring-white/5 sm:p-4">

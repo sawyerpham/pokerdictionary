@@ -6,7 +6,7 @@ import { combosOf } from '../engine/ranges';
 import { CALL, HANDS, MAX_STACK, PUSH } from '../engine/pushfold';
 import { Grid } from '../guides/Preflop';
 import { record } from '../state/progressStore';
-import { BUTTON, PANEL } from './ui';
+import { BUTTON, PANEL, Stats } from './ui';
 
 const at = new Map(HANDS.map((h, i) => [h, i]));
 const CLOSE = 0.05; // bb: closer than this, either choice is fine
@@ -120,9 +120,12 @@ export function PushFold() {
       <div className="mb-4 flex flex-wrap items-center gap-3 px-2">
         <Segmented label="Mode" value={mode} options={[...MODES]} onChange={setMode} />
         {mode === 'drill' && (
-          <span className="text-[15px] text-[var(--text-muted)] tabular-nums">
-            {score.right}/{score.total} right{score.lost > 0 && ` · ${score.lost.toFixed(2)} bb given up`}
-          </span>
+          <Stats
+            items={[
+              { value: `${score.right}/${score.total}`, label: 'right' },
+              score.lost > 0 && { value: `${score.lost.toFixed(2)} bb`, label: 'given up', tone: 'text-rose-300' },
+            ]}
+          />
         )}
       </div>
 

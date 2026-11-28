@@ -4,11 +4,12 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { SHELVES } from '../guides/registry';
 import { TOOLS } from '../study/tools';
 import { AccountMenu } from './AccountMenu';
+import { Help } from './Help';
 
 interface Item {
   to: string;
   title: string;
-  desc: string;
+  about?: string;
   premium?: boolean;
 }
 interface Menu {
@@ -17,7 +18,7 @@ interface Menu {
 }
 
 const tools = (group: string): Item[] =>
-  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ to: `/study/${t.slug}`, title: t.title, desc: t.desc, premium: t.premium }));
+  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ to: `/study/${t.slug}`, title: t.title, about: t.about, premium: t.premium }));
 
 // Grouped by what you came to do, the way poker study sites lay out their menus. Daily flop is its own link.
 const MENUS: Menu[] = [
@@ -29,14 +30,22 @@ const MENUS: Menu[] = [
       {
         title: 'Calculators',
         items: [
-          { to: '/evaluator', title: 'Evaluator', desc: 'Win odds for every hand at a table.' },
-          { to: '/chips', title: 'Chip calculator', desc: 'Chip colors and counts for a home game.' },
+          {
+            to: '/evaluator',
+            title: 'Evaluator',
+            about: 'Enter the cards at a table and see each player’s chance to win as the hand runs out. Good for settling arguments and for a feel of how far ahead or behind a hand is.',
+          },
+          {
+            to: '/chips',
+            title: 'Chip calculator',
+            about: 'Chip colors, values and how many of each every player starts with, for a home game. A good split keeps the game moving and makes raising the blinds simple.',
+          },
         ],
       },
     ],
   },
   { label: 'Review', sections: [{ items: tools('Review') }] },
-  { label: 'Learn', sections: SHELVES.map((s) => ({ title: s.title, items: s.items.map((g) => ({ to: `/guides/${g.slug}`, title: g.title, desc: g.description })) })) },
+  { label: 'Learn', sections: SHELVES.map((s) => ({ title: s.title, items: s.items.map((g) => ({ to: `/guides/${g.slug}`, title: g.title })) })) },
 ];
 
 const linkClass = (active: boolean) =>
@@ -111,24 +120,24 @@ export function NavBar() {
                     id={id}
                     className={`absolute inset-x-2 top-full max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[#0f1011] p-2 shadow-2xl shadow-black/60 lg:inset-x-auto lg:right-0 lg:mt-1 lg:w-max`}
                   >
-                    <div className="grid grid-cols-1 gap-x-1 gap-y-3 sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none lg:auto-cols-[15rem]">
+                    <div className="grid grid-cols-1 gap-x-1 gap-y-3 sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none lg:auto-cols-[13rem]">
                       {m.sections.map((s, k) => (
                         <section key={k} aria-label={s.title ?? m.label}>
                           {s.title && <h2 className="px-2.5 pt-1 pb-1.5 text-[12px] font-medium text-[var(--text-muted)]">{s.title}</h2>}
                           <ul>
                             {s.items.map((it) => (
-                              <li key={it.to}>
+                              <li key={it.to} className="flex items-center gap-1">
                                 <NavLink
                                   to={it.to}
                                   onClick={close}
-                                  className={({ isActive }) => `flex flex-col rounded-[8px] px-2.5 py-1.5 transition-colors hover:bg-white/[0.06] ${isActive ? 'bg-white/[0.06]' : ''}`}
+                                  className={({ isActive }) =>
+                                    `flex min-h-9 flex-1 items-center gap-1.5 rounded-[8px] px-2.5 text-[14px] font-medium transition-colors hover:bg-white/[0.06] ${isActive ? 'bg-white/[0.06]' : ''}`
+                                  }
                                 >
-                                  <span className="flex items-center gap-1.5 text-[14px] leading-snug font-medium">
-                                    {it.title}
-                                    {it.premium && <span className="rounded-full bg-amber-400/15 px-1.5 text-[10px] font-semibold text-amber-300">Premium</span>}
-                                  </span>
-                                  <span className="text-[12px] leading-snug text-[var(--text-muted)]">{it.desc}</span>
+                                  {it.title}
+                                  {it.premium && <span className="rounded-full bg-amber-400/15 px-1.5 text-[10px] font-semibold text-amber-300">Premium</span>}
                                 </NavLink>
+                                {it.about && <Help title={it.title} about={it.about} />}
                               </li>
                             ))}
                           </ul>
