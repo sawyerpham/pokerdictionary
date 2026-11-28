@@ -122,6 +122,24 @@ server.ask_deepseek = working
 # An admin can manage account types too.
 ok(boss.put(f'/api/admin/users/{pid}/role', json={'role': 'admin'}).status_code == 200, 'owner makes an admin')
 ok(player.get('/api/admin/users').status_code == 200, 'admins see the Admin page')
+# Admins set default and premium, but only an owner grants or removes Admin (a stolen admin session can't mint admins).
+third = TestClient(server.app)
+sign_in(third, 'third@example.com')
+tid = next(u['id'] for u in player.get('/api/admin/users').json() if u['email'] == 'third@example.com')
+ok(third.get('/api/admin/stats').status_code == 403, 'default accounts have no stats')
+ok(player.put(f'/api/admin/users/{tid}/role', json={'role': 'premium'}).status_code == 200, 'admin sets premium')
+ok(player.put(f'/api/admin/users/{tid}/role', json={'role': 'admin'}).status_code == 403, 'admin cannot grant admin')
+ok(player.put(f'/api/admin/users/{pid}/role', json={'role': 'default'}).status_code == 403, 'admin cannot remove admin')
+ok(player.put(f'/api/admin/users/{bid}/role', json={'role': 'default'}).status_code == 400, 'admin cannot touch the owner')
+# Stats: counts by type, and every change in the audit log, newest first.
+stats = player.get('/api/admin/stats').json()
+ok(stats['roles'] == {'default': 1, 'premium': 1, 'admin': 1, 'owner': 1} and stats['users'] == 4, f'role counts {stats["roles"]}')
+ok(stats['joined']['day'] == 4 and stats['signedIn']['week'] == 4 and stats['coach']['all'] >= 3, f'activity {stats}')
+ok([(c['by'], c['user'], c['new']) for c in stats['changes']][:3] == [
+    ('player2@example.com', 'third@example.com', 'premium'), ('boss@example.com', 'player2@example.com', 'admin'),
+    ('boss@example.com', 'player2@example.com', 'premium')], f'audit log {stats["changes"]}')
+row = next(u for u in boss.get('/api/admin/users').json() if u['email'] == 'player@example.com')
+ok(row['synced'] > 0 and row['lastSeen'] > 0, f'per-user activity {row}')
 
 # The daily backup is a readable copy of the database, and expired sessions don't go into it.
 import backup  # noqa: E402

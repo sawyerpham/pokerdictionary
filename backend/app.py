@@ -20,8 +20,8 @@ from pydantic import BaseModel
 # sign-in (Google or an emailed link), sessions, each user's synced data, account types, and the AI coach.
 #
 # Account types: "owner" (the emails in OWNER_EMAILS; set only on the server, so nobody can lock the owner out),
-# "admin" (set by an owner or admin on the Admin page; manages account types), "premium" (the AI coach) and
-# "default". Each type includes everything below it.
+# "admin" (granted and removed only by an owner; sets other accounts to default or premium and sees the stats),
+# "premium" (the AI coach) and "default". Each type includes everything below it.
 DIST = Path(__file__).parent / 'dist'
 # Computed study data too big for git (flop libraries, board reports), copied to the server by deploy/upload-data.sh.
 STUDY = Path(os.environ.get('STUDY_DATA', '/study'))
@@ -61,6 +61,9 @@ with closing(db()) as con, con:
         CREATE TABLE IF NOT EXISTS docs (user_id INTEGER NOT NULL, name TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL,
                                          PRIMARY KEY (user_id, name));
         CREATE TABLE IF NOT EXISTS coach_uses (user_id INTEGER NOT NULL, at INTEGER NOT NULL);
+        -- Who changed whose account type. Ids, not emails, so deleting an account leaves no personal data here.
+        CREATE TABLE IF NOT EXISTS role_changes (at INTEGER NOT NULL, by_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+                                                 old TEXT NOT NULL, new TEXT NOT NULL);
     ''')
     if 'role' not in [c['name'] for c in con.execute('PRAGMA table_info(users)')]:
         con.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'default'")
@@ -184,7 +187,7 @@ def logout(request: Request, response: Response):
 def delete_account(request: Request, response: Response):
     with closing(db()) as con, con:
         user = current_user(con, request)
-        for table in ('docs', 'sessions', 'coach_uses'):
+        for table in ('docs', 'sessions', 'coach_uses', 'role_changes'):
             con.execute(f'DELETE FROM {table} WHERE user_id = ?', (user['id'],))
         con.execute('DELETE FROM users WHERE id = ?', (user['id'],))
     response.delete_cookie('session')
@@ -325,20 +328,55 @@ def sync_put(name: str, doc: Doc, request: Request):
     return {'ok': True}
 
 
-# --- Admin: account types.
+# --- Admin: account types and stats.
 
 def day_start() -> int:
     return int(time.time()) // 86400 * 86400
+
+
+SIGNED_IN = f'MAX(expires) - {SESSION_DAYS * 86400}'  # sessions last SESSION_DAYS, so the newest one's start is the last sign-in
 
 
 @app.get('/api/admin/users')
 def admin_users(request: Request):
     with closing(db()) as con:
         require(current_user(con, request), 'admin')
-        rows = con.execute('''SELECT users.*, (SELECT COUNT(*) FROM coach_uses WHERE user_id = users.id AND at >= ?) AS coach_today
-                              FROM users ORDER BY created''', (day_start(),)).fetchall()
-        return [{'id': r['id'], 'email': r['email'], 'name': r['name'], 'role': role_of(r), 'created': r['created'], 'coachToday': r['coach_today']}
-                for r in rows]
+        rows = con.execute(f'''SELECT users.*,
+                                 (SELECT COUNT(*) FROM coach_uses WHERE user_id = users.id AND at >= ?) AS coach_today,
+                                 (SELECT COUNT(*) FROM coach_uses WHERE user_id = users.id) AS coach_total,
+                                 (SELECT {SIGNED_IN} FROM sessions WHERE user_id = users.id) AS last_seen,
+                                 (SELECT COALESCE(SUM(LENGTH(data)), 0) FROM docs WHERE user_id = users.id) AS synced
+                               FROM users ORDER BY created''', (day_start(),)).fetchall()
+        return [{'id': r['id'], 'email': r['email'], 'name': r['name'], 'role': role_of(r), 'created': r['created'], 'coachToday': r['coach_today'],
+                 'coachTotal': r['coach_total'], 'lastSeen': r['last_seen'], 'synced': r['synced']} for r in rows]
+
+
+@app.get('/api/admin/stats')
+def admin_stats(request: Request):
+    with closing(db()) as con:
+        require(current_user(con, request), 'admin')
+        now = int(time.time())
+        windows = {'day': now - 86400, 'week': now - 7 * 86400, 'month': now - 30 * 86400}
+        roles = {'default': 0, 'premium': 0, 'admin': 0, 'owner': 0}
+        for r in con.execute('SELECT email, role FROM users'):
+            roles[role_of(r)] += 1
+        count = lambda sql, *args: con.execute(sql, args).fetchone()[0]  # noqa: E731
+        seen = f'SELECT COUNT(*) FROM (SELECT user_id FROM sessions GROUP BY user_id HAVING {SIGNED_IN} >= ?)'
+        changes = con.execute('''SELECT role_changes.*, a.email AS by_email, u.email AS user_email FROM role_changes
+                                 LEFT JOIN users a ON a.id = by_id LEFT JOIN users u ON u.id = user_id
+                                 ORDER BY at DESC, role_changes.rowid DESC LIMIT 20''').fetchall()
+        return {
+            'users': sum(roles.values()),
+            'roles': roles,
+            'joined': {k: count('SELECT COUNT(*) FROM users WHERE created >= ?', t) for k, t in windows.items()},
+            'signedIn': {k: count(seen, t) for k, t in windows.items()},
+            'sessions': count('SELECT COUNT(*) FROM sessions WHERE expires > ?', now),
+            'coach': {'today': count('SELECT COUNT(*) FROM coach_uses WHERE at >= ?', day_start()),
+                      **{k: count('SELECT COUNT(*) FROM coach_uses WHERE at >= ?', t) for k, t in windows.items() if k != 'day'},
+                      'all': count('SELECT COUNT(*) FROM coach_uses')},
+            'syncing': count('SELECT COUNT(DISTINCT user_id) FROM docs'),
+            'changes': [{'at': c['at'], 'by': c['by_email'], 'user': c['user_email'], 'old': c['old'], 'new': c['new']} for c in changes],
+        }
 
 
 class RoleChange(BaseModel):
@@ -353,10 +391,17 @@ def admin_set_role(user_id: int, body: RoleChange, request: Request):
         target = con.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         if not target:
             raise HTTPException(404, 'No such account')
-        if role_of(target) == 'owner':
+        old = role_of(target)
+        if old == 'owner':
             raise HTTPException(400, 'Owners are set on the server, not here')
+        # Least privilege: only an owner grants or removes Admin, so one stolen admin session can't mint more admins.
+        if 'admin' in (old, body.role) and role_of(admin) != 'owner':
+            raise HTTPException(403, 'Only an owner can grant or remove Admin')
+        if old == body.role:
+            return {'ok': True}
         con.execute('UPDATE users SET role = ? WHERE id = ?', (body.role, user_id))
-    print(f'role: {admin["email"]} set {target["email"]} from {role_of(target)} to {body.role}', flush=True)  # audit trail
+        con.execute('INSERT INTO role_changes VALUES (?, ?, ?, ?, ?)', (int(time.time()), admin['id'], user_id, old, body.role))
+    print(f'role: user {admin["id"]} set user {user_id} from {old} to {body.role}', flush=True)
     return {'ok': True}
 
 
