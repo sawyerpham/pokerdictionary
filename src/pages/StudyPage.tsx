@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { ToolCards } from '../components/ToolCards';
 import { useAccount } from '../state/account';
 import { TOOLS } from '../study/tools';
@@ -23,6 +23,9 @@ const PAGES = {
   coach: lazy(() => import('../study/Coach').then((m) => ({ default: m.Coach }))),
 } as const;
 
+// Where each tool sits in the top bar's menus (Daily flop is a link of its own).
+const CRUMB = { Preflop: 'Practice / Preflop', Postflop: 'Practice / Postflop', Solver: 'Tools / Solver', Review: 'Review' };
+
 export function StudyPage() {
   const { tool } = useParams();
   const pulled = useAccount((s) => s.pulled); // newer data from your account: start the tool over with it
@@ -39,12 +42,7 @@ export function StudyPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-2 py-3 sm:px-4">
       <div className="mb-4 px-2">
-        <p className="text-[14px] text-[var(--text-muted)]">
-          <Link to="/study" className="hover:text-[var(--text-primary)]">
-            Study
-          </Link>{' '}
-          / {t.group}
-        </p>
+        {t.slug !== 'daily' && <p className="text-[14px] text-[var(--text-muted)]">{CRUMB[t.group]}</p>}
         <h1 className="text-title-2">{t.title}</h1>
         <p className="text-[15px] text-[var(--text-muted)]">{t.desc}</p>
       </div>
