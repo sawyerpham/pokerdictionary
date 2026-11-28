@@ -83,7 +83,7 @@ export function NavBar() {
       </nav>
       {open && (
         <div className="absolute inset-x-0 top-full mx-auto flex max-w-6xl justify-center px-2 sm:justify-end sm:px-4">
-          <div className="max-h-[calc(100dvh-6rem)] w-full overflow-y-auto rounded-b-[12px] border border-t-0 border-[var(--line)] bg-[rgb(15_16_17/0.97)] p-1.5 backdrop-blur-xl sm:w-[34rem]">
+          <div className="max-h-[calc(100dvh-6rem)] w-full overflow-y-auto rounded-b-[12px] border border-t-0 border-[var(--line)] bg-[#0f1011] p-3 shadow-2xl shadow-black/60 sm:w-[34rem] lg:w-[56rem]">
             <ToolCards onPick={() => setOpen(false)} />
           </div>
         </div>

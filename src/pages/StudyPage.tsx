@@ -29,8 +29,8 @@ export function StudyPage() {
   const t = TOOLS.find((x) => x.slug === tool);
   if (!t) {
     return (
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
-        <h1 className="text-title-2 mb-4">Study</h1>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+        <h1 className="text-title-2 mb-6">Study</h1>
         <ToolCards />
       </main>
     );
@@ -39,9 +39,12 @@ export function StudyPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-2 py-3 sm:px-4">
       <div className="mb-4 px-2">
-        <Link to="/study" className="text-[15px] text-[var(--accent-soft)] hover:underline">
-          Study
-        </Link>
+        <p className="text-[14px] text-[var(--text-muted)]">
+          <Link to="/study" className="hover:text-[var(--text-primary)]">
+            Study
+          </Link>{' '}
+          / {t.group}
+        </p>
         <h1 className="text-title-2">{t.title}</h1>
         <p className="text-[15px] text-[var(--text-muted)]">{t.desc}</p>
       </div>
