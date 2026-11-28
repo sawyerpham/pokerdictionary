@@ -229,3 +229,59 @@ math {
     animation: none;
   }
 }
+
+/* Home page art: each card in the swarm bobs a few pixels. */
+.swarm-card {
+  animation: swarm-drift 6s ease-in-out infinite alternate;
+}
+@keyframes swarm-drift {
+  from {
+    transform: translate(-2px, -2px);
+  }
+  to {
+    transform: translate(2px, 2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swarm-card {
+    animation: none;
+  }
+}
+
+/* Home page entrance: the words sharpen from a blur, then the cards and the hand meet in the middle. Both art
+   animations end 2.7s in, so they arrive together. */
+.word-in {
+  display: inline-block;
+  animation: word-in 0.9s ease-out both;
+}
+.swarm-in {
+  animation: swarm-in 1.7s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+.hand-in {
+  animation: hand-in 1.7s 1s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+@keyframes word-in {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+  }
+}
+@keyframes swarm-in {
+  from {
+    opacity: 0;
+    transform: translateX(-620px);
+  }
+}
+@keyframes hand-in {
+  from {
+    opacity: 0;
+    transform: translateX(620px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .word-in,
+  .swarm-in,
+  .hand-in {
+    animation: none;
+  }
+}

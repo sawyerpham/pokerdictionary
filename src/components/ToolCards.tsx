@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { GROUPS, TOOLS } from '../study/tools';
 import { Help } from './Help';
+import { PremiumBadge } from './PremiumBadge';
 
 /** The study tools in labelled columns. Also the nav's Study menu. */
 export function ToolCards({ onPick }: { onPick?: () => void }) {
@@ -18,7 +19,7 @@ export function ToolCards({ onPick }: { onPick?: () => void }) {
                   className="flex min-h-9 flex-1 items-center gap-1.5 rounded-[8px] px-2.5 text-[14px] font-medium transition-colors hover:bg-white/[0.06]"
                 >
                   {t.title}
-                  {t.premium && <span className="rounded-full bg-amber-400/15 px-1.5 text-[10px] font-semibold text-amber-300">Premium</span>}
+                  {t.premium && <PremiumBadge />}
                 </Link>
                 <Help id={t.slug} title={t.title} about={t.about} />
               </li>

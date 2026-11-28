@@ -18,14 +18,20 @@ export function AccountMenu() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={me ? `Account: ${me.email}` : 'Sign in'}
-        className="flex min-h-11 items-center pl-3"
+        title={me ? 'Account' : 'Sign in'}
+        className="flex min-h-11 min-w-11 items-center justify-center"
       >
         {me ? (
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[13px] font-semibold text-white">
             {(me.name ?? me.email)[0].toUpperCase()}
           </span>
         ) : (
-          <span className="rounded-full bg-[var(--text-primary)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--bg-main)] transition hover:bg-white">Sign in</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-third)] text-[var(--text-primary)] ring-1 ring-[var(--line)] transition hover:brightness-150">
+            <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4" fill="currentColor">
+              <circle cx="12" cy="8" r="4.2" />
+              <path d="M3.5 21c0-4.4 3.8-7 8.5-7s8.5 2.6 8.5 7z" />
+            </svg>
+          </span>
         )}
       </button>
       {open && <AccountDialog failed={failed} next={location.pathname} onClose={() => setOpen(false)} />}

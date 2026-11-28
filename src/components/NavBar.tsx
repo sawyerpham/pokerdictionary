@@ -5,13 +5,12 @@ import { SHELVES } from '../guides/registry';
 import { PAGES_ABOUT, TOOLS } from '../study/tools';
 import { AccountMenu } from './AccountMenu';
 import { GearIcon } from './GearIcon';
-import { Help } from './Help';
+import { PremiumBadge } from './PremiumBadge';
 
 interface Item {
   id: string;
   to: string;
   title: string;
-  about?: string;
   premium?: boolean;
 }
 interface Menu {
@@ -20,7 +19,7 @@ interface Menu {
 }
 
 const tools = (group: string): Item[] =>
-  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ id: t.slug, to: `/study/${t.slug}`, title: t.title, about: t.about, premium: t.premium }));
+  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ id: t.slug, to: `/study/${t.slug}`, title: t.title, premium: t.premium }));
 
 const pages = (...ids: string[]): Item[] => PAGES_ABOUT.filter((p) => ids.includes(p.id));
 
@@ -75,21 +74,21 @@ export function NavBar() {
       onPointerLeave={(e) => isMouse(e) && close()}
       className="sticky top-0 z-40 border-b border-[var(--line)] bg-[rgb(8_9_10/0.8)] backdrop-blur-xl backdrop-saturate-150"
     >
-      <nav className="mx-auto flex max-w-6xl flex-col items-center px-4 sm:min-h-16 sm:flex-row sm:justify-between">
-        <NavLink to="/" className="flex min-h-11 items-center gap-2 text-[17px] font-semibold tracking-[-0.02em]">
+      <nav className="mx-auto grid max-w-6xl grid-cols-[1fr_auto] items-center px-4 lg:min-h-16 lg:grid-cols-[1fr_auto_1fr]">
+        <NavLink to="/" className="flex min-h-11 items-center gap-2 justify-self-start text-[17px] font-semibold tracking-[-0.02em]">
           <span aria-hidden className="text-[20px] leading-none">
             ♣
           </span>
           Poker Dictionary
         </NavLink>
-        <div className="flex flex-wrap items-center justify-center">
+        <div className="order-last col-span-2 flex flex-wrap items-center justify-center lg:order-none lg:col-span-1">
           {plain('/table', 'Table')}
           {MENUS.map((m) => {
             const items = m.sections.flatMap((s) => s.items);
             const here = items.some((it) => pathname === it.to) || (m.label === 'Guides' && pathname.startsWith('/guides'));
             const id = `menu-${m.label.toLowerCase()}`;
             const menu = (
-              <div key={m.label} className="lg:relative">
+              <div key={m.label}>
                 <button
                   type="button"
                   aria-expanded={open === m.label}
@@ -107,7 +106,7 @@ export function NavBar() {
                 {open === m.label && (
                   <div
                     id={id}
-                    className={`absolute inset-x-2 top-full max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[#0f1011] p-2 shadow-2xl shadow-black/60 lg:inset-x-auto lg:right-0 lg:mt-1 lg:w-max`}
+                    className={`absolute inset-x-2 top-full max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[12px] border border-[var(--line)] bg-[#0f1011] p-2 shadow-2xl shadow-black/60 lg:inset-x-auto lg:left-1/2 lg:w-max lg:-translate-x-1/2`}
                   >
                     <div className="grid grid-cols-1 gap-x-1 gap-y-3 sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none lg:auto-cols-[13rem]">
                       {m.sections.map((s, k) => (
@@ -124,9 +123,8 @@ export function NavBar() {
                                   }
                                 >
                                   {it.title}
-                                  {it.premium && <span className="rounded-full bg-amber-400/15 px-1.5 text-[10px] font-semibold text-amber-300">Premium</span>}
+                                  {it.premium && <PremiumBadge />}
                                 </NavLink>
-                                {it.about && <Help id={it.id} title={it.title} about={it.about} />}
                               </li>
                             ))}
                           </ul>
@@ -141,6 +139,8 @@ export function NavBar() {
             return m.label === 'Practice' ? [menu, <Fragment key="daily">{plain('/study/daily', 'Daily flop')}</Fragment>] : menu;
           })}
           {plain('/about', 'About')}
+        </div>
+        <div className="flex items-center justify-self-end">
           <NavLink
             to="/settings"
             aria-label="Settings"
