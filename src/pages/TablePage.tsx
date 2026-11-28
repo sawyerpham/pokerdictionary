@@ -10,6 +10,7 @@ import { Segmented, Toggle } from '../components/RuleControls';
 import { bump, firstTime, flyIn, flyOut, ms, pop, setMotion } from '../components/motion';
 import { MAX_PLAYERS, STAKES, useSettings } from '../state/settingsStore';
 import { BotPicker, cardOf } from '../components/BotPicker';
+import { TableSettings } from '../components/TableSettings';
 import { LiveEvaluator } from '../components/LiveEvaluator';
 import { BLIND_LEAD, BLIND_STEP, boardDelay, DEAL_STEP, SWEEP_ANIM, useTable, YOU, type Mode } from '../state/useTable';
 
@@ -762,6 +763,7 @@ export function TablePage() {
               </button>
             </>
           )}
+          <TableSettings />
         </div>
       </div>
 

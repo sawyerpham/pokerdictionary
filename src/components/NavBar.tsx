@@ -4,6 +4,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { SHELVES } from '../guides/registry';
 import { PAGES_ABOUT, TOOLS } from '../study/tools';
 import { AccountMenu } from './AccountMenu';
+import { GearIcon } from './GearIcon';
 import { Help } from './Help';
 
 interface Item {
@@ -29,7 +30,6 @@ const MENUS: Menu[] = [
   {
     label: 'Tools',
     sections: [
-      { title: 'Play', items: pages('table') },
       { title: 'Solver', items: tools('Solver') },
       { title: 'Calculators', items: pages('evaluator', 'chips') },
     ],
@@ -83,6 +83,7 @@ export function NavBar() {
           Poker Dictionary
         </NavLink>
         <div className="flex flex-wrap items-center justify-center">
+          {plain('/table', 'Table')}
           {MENUS.map((m) => {
             const items = m.sections.flatMap((s) => s.items);
             const here = items.some((it) => pathname === it.to) || (m.label === 'Guides' && pathname.startsWith('/guides'));
@@ -147,10 +148,7 @@ export function NavBar() {
             className={({ isActive }) => `${linkClass(isActive)} min-w-11 justify-center`}
             onPointerEnter={(e) => isMouse(e) && close()}
           >
-            <svg viewBox="0 0 24 24" aria-hidden className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
+            <GearIcon />
           </NavLink>
           <AccountMenu />
         </div>

@@ -1,6 +1,6 @@
 import { ChipPile, ChipSwatch } from '../components/Chips';
 import { ActionRow, Group, Row, Segmented, Toggle } from '../components/RuleControls';
-import { DENOMS, STAKES, VEGAS_CHIPS, type ChipDesign, useSettings } from '../state/settingsStore';
+import { DENOMS, VEGAS_CHIPS, type ChipDesign, useSettings } from '../state/settingsStore';
 
 export function SettingsPage() {
   const s = useSettings((st) => st.settings);
@@ -11,23 +11,6 @@ export function SettingsPage() {
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:py-12">
       <h1 className="text-large-title mb-8 px-1">Settings</h1>
       <div className="space-y-8">
-        <Group title="Game">
-          <Row title="Blinds">
-            <Segmented
-              label="Blinds"
-              value={s.bb}
-              options={STAKES.map((x) => ({ value: x.bb, label: `${x.sb}/${x.bb}` }))}
-              onChange={(bb) => update(STAKES.find((x) => x.bb === bb)!)}
-            />
-          </Row>
-          <Row title="Buy-in" hint="In big blinds, for every seat">
-            <Segmented label="Buy-in" value={s.buyInBb} options={[40, 100, 200, 300].map((v) => ({ value: v, label: `${v}` }))} onChange={(v) => update({ buyInBb: v })} />
-          </Row>
-          <Row title="NPCs rebuy" hint="When they can't cover the big blind">
-            <Toggle label="NPCs rebuy" checked={s.autoRebuy} onChange={(v) => update({ autoRebuy: v })} />
-          </Row>
-        </Group>
-
         <Group title="Spectate">
           <Row title="Show all hole cards">
             <Toggle label="Show all hole cards" checked={s.spectateShowCards} onChange={(v) => update({ spectateShowCards: v })} />
