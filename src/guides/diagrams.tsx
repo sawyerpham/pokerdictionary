@@ -81,9 +81,10 @@ export const groupOf = (seat: string): keyof typeof GROUPS =>
 
 /**
  * `seats` (clockwise from the button, 2 to 9 of them) around a table, colored by position group, numbered by the
- * order they act preflop or, with `post`, after the flop. `you` gets a white border.
+ * order they act preflop or, with `post`, after the flop. `you` gets a white border that blinks: it's your turn.
+ * `tags` mark what a seat has done: folded seats fade out under a FOLD tag, bets get an amber tag.
  */
-export function SeatTable({ seats, post = false, you }: { seats: string[]; post?: boolean; you?: string }) {
+export function SeatTable({ seats, post = false, you, tags = {} }: { seats: string[]; post?: boolean; you?: string; tags?: Record<string, string> }) {
   const W = 360, H = 262, cx = W / 2, cy = 125;
   const at = (i: number, r = 1) => {
     const a = ((90 + (i * 360) / seats.length) * Math.PI) / 180;
@@ -112,15 +113,28 @@ export function SeatTable({ seats, post = false, you }: { seats: string[]; post?
         {seats.map((name, i) => {
           const p = at(i);
           const group = GROUPS[groupOf(name)];
+          const tag = tags[name], folded = tag === 'Fold';
+          const tagW = tag ? tag.length * 6.2 + 14 : 0;
           return (
             <g key={name}>
-              <title>{`${name}: ${group.label.toLowerCase()} position, acts ${order(i)} of ${seats.length} ${when}`}</title>
-              <circle cx={p.x} cy={p.y} r={25} fill={group.color} stroke={name === you ? '#fff' : 'var(--bg-second)'} strokeWidth={name === you ? 3.5 : 2} />
-              <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={name.length > 3 ? 11 : 13} fontWeight={700} fill="#fff">
-                {name}
-              </text>
+              <title>{`${name}: ${group.label.toLowerCase()} position, acts ${order(i)} of ${seats.length} ${when}${tag ? `; ${folded ? 'folded' : tag}` : ''}`}</title>
+              <g opacity={folded ? 0.3 : 1}>
+                <circle cx={p.x} cy={p.y} r={25} fill={group.color} stroke="var(--bg-second)" strokeWidth={2} />
+                <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={name.length > 3 ? 11 : 13} fontWeight={700} fill="#fff">
+                  {name}
+                </text>
+              </g>
+              {name === you && <circle className="turn-blink" cx={p.x} cy={p.y} r={26} fill="none" stroke="#fff" strokeWidth={3.5} />}
+              {tag && (
+                <g>
+                  <rect x={p.x - tagW / 2} y={p.y + 17} width={tagW} height={16} rx={8} fill={folded ? '#2c2c2e' : '#3a2f12'} stroke={folded ? '#636366' : '#fbbf24'} strokeWidth={1} />
+                  <text x={p.x} y={p.y + 28.5} textAnchor="middle" fontSize={10} fontWeight={700} letterSpacing={0.6} fill={folded ? '#aeaeb2' : '#fcd34d'}>
+                    {tag.toUpperCase()}
+                  </text>
+                </g>
+              )}
               {FULL[name] && (
-                <text x={p.x} y={p.y + 38} textAnchor="middle" fontSize={11} fill={INK}>
+                <text x={p.x} y={p.y + (tag ? 46 : 38)} textAnchor="middle" fontSize={11} fill={INK} opacity={folded ? 0.5 : 1}>
                   {FULL[name]}
                 </text>
               )}

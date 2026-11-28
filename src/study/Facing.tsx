@@ -66,6 +66,21 @@ function story(t: Table, key: string, node: number) {
     : `You open the ${O}, the ${R} 3-bets, you 4-bet to ${s.fourBet} bb, and the ${R} goes all-in for ${t.stack} bb.`;
 }
 
+/** What each seat has done before your decision, for the table: everyone not in the pot has folded. */
+function tagsOf(t: Table, key: string, node: number) {
+  const [O, R] = seatsOf(key), s = t.spots[key], n = s.nodes[node];
+  const tags: Record<string, string> = {};
+  // Facing the open, the seats after you haven't acted yet; after that, everyone but the two of you has folded.
+  for (const x of SEATS.slice(0, n.facing === 'open' ? SEATS.indexOf(R) : SEATS.length)) if (x !== O && x !== R) tags[x] = 'Fold';
+  const open = `Open ${s.open} bb`, three = `3-bet ${s.threeBet} bb`, four = `4-bet ${s.fourBet} bb`, jam = 'All-in';
+  if (n.facing === 'open') tags[O] = open;
+  else if (n.facing === '3bet') Object.assign(tags, { [O]: open, [R]: three });
+  else if (n.facing === '4bet') Object.assign(tags, { [O]: four, [R]: three });
+  else if (n.hero === 'responder') Object.assign(tags, { [O]: jam, [R]: three });
+  else Object.assign(tags, { [O]: s.threeBet >= t.stack ? open : four, [R]: jam });
+  return tags;
+}
+
 /** One decision as a chart: each hand's mix of actions; hands that never get here are dark. */
 function Chart({ t, spot, node, mark }: { t: Table; spot: string; node: number; mark?: string }) {
   const [hover, setHover] = useState<string>();
@@ -271,7 +286,7 @@ export function Facing() {
         <>
           <section className={PANEL}>
             <div className="rounded-[12px] bg-[var(--bg-main)]/50 p-3 ring-1 ring-white/5 sm:p-4">
-              <SeatTable seats={around(6)} you={hero(t, q.spot, q.node)} />
+              <SeatTable seats={around(6)} you={hero(t, q.spot, q.node)} tags={tagsOf(t, q.spot, q.node)} />
             </div>
             <p className="mt-2 text-center text-[17px]">{story(t, q.spot, q.node)}</p>
             <div className="my-4 flex justify-center gap-2">

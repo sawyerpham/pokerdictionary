@@ -129,6 +129,7 @@ function Seat({
   p,
   faceUp,
   thinking,
+  yourTurn,
   handResult,
   dealOrder,
   position,
@@ -141,6 +142,7 @@ function Seat({
   p?: Profile;
   faceUp: boolean;
   thinking: boolean;
+  yourTurn?: boolean; // your seat, waiting on you: its white border blinks
   handResult?: { won: number; hand?: string };
   dealOrder: number[];
   position?: string;
@@ -191,6 +193,7 @@ function Seat({
               : 'ring-white/10'
         }`}
       >
+        {yourTurn && <span aria-hidden className="turn-blink pointer-events-none absolute -inset-0.5 rounded-full ring-2 ring-white" />}
         <StackPile t={t} i={i} left={pileLeft} />
         <button type="button" onClick={onMenu} aria-label={`${you ? 'Your' : `${p?.name}'s`} seat options`} className="hit absolute inset-0 rounded-full" />
         {onRemove && (
@@ -810,6 +813,7 @@ export function TablePage() {
             p={s.id === YOU ? undefined : profile(s.id)}
             faceUp={s.id === YOU || showAll || t.street === 'done'}
             thinking={settled && t.toAct === i && s.id !== YOU && !session.paused}
+            yourTurn={yourTurn && i === youIdx}
             handResult={result(i)}
             dealOrder={dealOrder}
             position={settings.showPositions && t.handNo > 0 && !s.sittingOut ? positions.get(i) : undefined}

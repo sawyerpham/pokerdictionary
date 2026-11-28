@@ -92,7 +92,11 @@ export function PreflopDrill() {
         </div>
 
         <div className="rounded-[12px] bg-[var(--bg-main)]/50 p-3 ring-1 ring-white/5 sm:p-4">
-          <SeatTable seats={around(players)} you={q.seat} />
+          <SeatTable
+            seats={around(q.players)}
+            you={q.seat}
+            tags={Object.fromEntries(SEATS[q.players].slice(0, SEATS[q.players].indexOf(q.seat)).map((s) => [s, 'Fold']))}
+          />
         </div>
         <p className="mt-2 text-center text-[17px]">
           <strong>{q.seat}</strong>, {players} players, folded to you

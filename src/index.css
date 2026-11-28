@@ -210,3 +210,22 @@ math {
     transform: none;
   }
 }
+
+/* Your turn: the white border around your seat pulses slowly. */
+.turn-blink {
+  animation: turn-blink 1.8s ease-in-out infinite;
+}
+@keyframes turn-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-blink {
+    animation: none;
+  }
+}

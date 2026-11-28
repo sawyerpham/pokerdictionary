@@ -14,9 +14,9 @@ export function Help({ title, about }: { title: string; about: string }) {
           e.stopPropagation();
           dialog.current?.showModal();
         }}
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white transition-colors hover:bg-white/[0.08]"
       >
-        <svg viewBox="0 0 16 16" aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+        <svg viewBox="0 0 16 16" aria-hidden className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
           <circle cx="8" cy="8" r="6.5" />
           <path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4" />
           <circle cx="8" cy="11.6" r=".4" fill="currentColor" />
