@@ -51,7 +51,7 @@ function Tool({ title, to, count, children }: { title: string; to: string; count
     <section className={`${PANEL} mb-4`}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <h2 className="text-headline">{title}</h2>
-        <Link to={to} className="text-[15px] text-[var(--accent)] hover:underline">
+        <Link to={to} className="text-[15px] text-[var(--accent-soft)] hover:underline">
           Practice
         </Link>
       </div>

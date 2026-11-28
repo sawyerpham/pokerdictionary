@@ -128,7 +128,7 @@ export function ChoiceList({
             </span>
             <svg
               viewBox="0 0 16 16"
-              className={`h-4 w-4 shrink-0 text-[var(--accent)] ${it.active ? '' : 'invisible'}`}
+              className={`h-4 w-4 shrink-0 text-[var(--accent-soft)] ${it.active ? '' : 'invisible'}`}
               aria-hidden
             >
               <path
@@ -153,7 +153,7 @@ export function ActionRow({ children, onClick }: { children: ReactNode; onClick:
     <button
       type="button"
       onClick={onClick}
-      className="min-h-11 w-full rounded-[10px] bg-[var(--bg-second)] px-4 text-[17px] text-[var(--accent)] transition-colors active:bg-white/[0.08]"
+      className="min-h-11 w-full rounded-[10px] bg-[var(--bg-second)] px-4 text-[17px] text-[var(--accent-soft)] transition-colors active:bg-white/[0.08]"
     >
       {children}
     </button>

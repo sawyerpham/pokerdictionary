@@ -79,7 +79,7 @@ export function RangeQuiz() {
             ))}
           </select>
         </Field>
-        <button type="button" onClick={() => pick(CHARTS[Math.floor(Math.random() * CHARTS.length)])} className="min-h-11 px-2 text-[15px] text-[var(--accent)]">
+        <button type="button" onClick={() => pick(CHARTS[Math.floor(Math.random() * CHARTS.length)])} className="min-h-11 px-2 text-[15px] text-[var(--accent-soft)]">
           Random
         </button>
       </div>

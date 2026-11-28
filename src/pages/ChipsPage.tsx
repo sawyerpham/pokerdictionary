@@ -186,7 +186,7 @@ export function ChipsPage() {
                     {c.each === undefined ? (
                       <span className="w-12 text-right text-[13px] text-[var(--text-muted)]">Auto</span>
                     ) : (
-                      <button type="button" onClick={() => setColor(i, { each: undefined })} className="hit relative w-12 text-right text-[13px] text-[var(--accent)]">
+                      <button type="button" onClick={() => setColor(i, { each: undefined })} className="hit relative w-12 text-right text-[13px] text-[var(--accent-soft)]">
                         Auto
                       </button>
                     )}
@@ -203,7 +203,7 @@ export function ChipsPage() {
               type="button"
               disabled={!unused.length}
               onClick={() => setS({ ...s, colors: [...s.colors, { name: unused[0].name, count: '25', value: '500' }] })}
-              className="min-h-11 text-[15px] text-[var(--accent)] disabled:text-[var(--text-muted)]"
+              className="min-h-11 text-[15px] text-[var(--accent-soft)] disabled:text-[var(--text-muted)]"
             >
               Add Color
             </button>

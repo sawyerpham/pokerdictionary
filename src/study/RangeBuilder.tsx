@@ -63,7 +63,7 @@ export function RangeBuilder() {
             setName(`Range ${ranges.length + 1}`);
             setWeights({});
           }}
-          className="min-h-11 px-2 text-[15px] text-[var(--accent)]"
+          className="min-h-11 px-2 text-[15px] text-[var(--accent-soft)]"
         >
           New
         </button>

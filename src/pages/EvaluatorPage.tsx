@@ -94,7 +94,7 @@ export function EvaluatorPage() {
           <input type="range" min={2} max={9} value={players} onChange={(e) => setPlayers(Number(e.target.value))} className="w-full accent-[var(--accent)]" />
         </label>
         <div className="ml-auto flex gap-4 text-[15px]">
-          <button type="button" onClick={random} className="min-h-11 text-[var(--accent)]">
+          <button type="button" onClick={random} className="min-h-11 text-[var(--accent-soft)]">
             Random Cards
           </button>
           <button type="button" onClick={clear} className="min-h-11 min-w-11 text-[var(--text-muted)]">

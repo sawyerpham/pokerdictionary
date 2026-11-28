@@ -48,7 +48,7 @@ export function DeckDialog({ title, used, current, onPick, onRemove, onClose }: 
               Make Random
             </button>
           )}
-          <button type="button" onClick={onClose} className="min-h-11 font-semibold text-[var(--accent)]">
+          <button type="button" onClick={onClose} className="min-h-11 font-semibold text-[var(--accent-soft)]">
             Done
           </button>
         </span>

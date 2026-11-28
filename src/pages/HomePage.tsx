@@ -13,39 +13,47 @@ const FEATURES = [
 
 export function HomePage() {
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-12 sm:py-20">
-      <div className="space-y-16 sm:space-y-20">
-        <section>
-          <h1 className="mb-4 max-w-3xl text-[40px] leading-[1.05] font-bold tracking-[-0.03em] sm:text-[56px]">Poker against anyone you want.</h1>
-          <p className="mb-8 max-w-2xl text-[19px] leading-snug text-[var(--text-muted)] sm:text-[21px]">
-            A clean, ad-free no-limit hold'em table with NPCs you can tune knob by knob, or watch play each other.
-          </p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-            <Link to="/table" className="flex min-h-11 items-center rounded-full bg-[var(--accent)] px-6 text-[17px] text-white transition hover:brightness-110">
-              Open Table
-            </Link>
-            <Link to="/guides" className="flex min-h-11 items-center gap-1.5 text-[17px] text-[var(--accent)] hover:underline">
-              Learn the game
-              <svg viewBox="0 0 8 14" className="h-3.5 w-2 shrink-0" aria-hidden>
-                <path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-          </div>
-        </section>
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-16 pb-16 sm:pt-32 sm:pb-24">
+      <section className="mb-20 sm:mb-28">
+        <p className="mb-5 text-[14px] text-[var(--text-muted)]">No-limit hold'em, in your browser</p>
+        <h1 className="mb-6 max-w-3xl text-[44px] leading-[1.02] font-semibold tracking-[-0.045em] sm:text-[68px]">Poker against anyone you want.</h1>
+        <p className="mb-9 max-w-xl text-[17px] leading-relaxed text-[var(--text-muted)] sm:text-[18px]">
+          A clean, ad-free no-limit hold'em table with NPCs you can tune knob by knob, or watch play each other.
+        </p>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <Link to="/table" className="flex min-h-11 items-center gap-2.5 rounded-full bg-[var(--text-primary)] px-5 text-[15px] font-medium text-[var(--bg-main)] transition hover:bg-white">
+            <svg viewBox="0 0 10 12" className="h-3 w-2.5" aria-hidden>
+              <path d="M0 0l10 6-10 6z" fill="currentColor" />
+            </svg>
+            Open table
+          </Link>
+          <Link to="/guides" className="flex min-h-11 items-center gap-1.5 text-[15px] text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]">
+            Learn the game
+            <span aria-hidden>→</span>
+          </Link>
+        </div>
+      </section>
 
-        <section>
-          <h2 className="text-title-2 mb-5 sm:text-[28px]">Features</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => (
-              <Link key={f.tag} to={f.to} className="flex flex-col rounded-[18px] bg-[var(--bg-second)] p-5 transition-colors hover:bg-[var(--bg-third)]">
-                <p className="text-caption mb-1.5 text-[var(--text-muted)]">{f.tag}</p>
-                <h3 className="text-headline mb-1.5">{f.title}</h3>
-                <p className="flex-1 text-[15px] leading-relaxed text-[var(--text-muted)]">{f.blurb}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
+      <section>
+        <h2 className="mb-6 text-[13px] text-[var(--text-muted)]">Features</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f) => (
+            <Link key={f.tag} to={f.to} className="group flex flex-col rounded-[12px] bg-[var(--bg-second)] transition-colors hover:bg-[var(--bg-third)]">
+              <div className="flex items-center gap-2 px-4 pt-3.5 pb-3 text-[13px]">
+                <span aria-hidden className="text-[var(--text-muted)]">♣</span>
+                <span className="font-medium">{f.tag}</span>
+                <span className="ml-auto text-[var(--text-muted)] opacity-0 transition-opacity group-hover:opacity-100" aria-hidden>
+                  →
+                </span>
+              </div>
+              <div className="mx-2 mb-2 flex flex-1 flex-col rounded-[8px] bg-[var(--bg-main)] px-3.5 py-3 ring-1 ring-[var(--line)]">
+                <h3 className="mb-1 text-[15px] font-medium">{f.title}</h3>
+                <p className="flex-1 text-[14px] leading-relaxed text-[var(--text-muted)]">{f.blurb}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

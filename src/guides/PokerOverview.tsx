@@ -66,7 +66,7 @@ function Content() {
       <GuideH3>Positions</GuideH3>
       <GuideP>
         Named by distance from the button.<Cite n={POSITION} /> Details in the{' '}
-        <Link to="/guides/positions" className="text-[var(--accent)] hover:underline">
+        <Link to="/guides/positions" className="text-[var(--accent-soft)] hover:underline">
           positions guide
         </Link>
         .

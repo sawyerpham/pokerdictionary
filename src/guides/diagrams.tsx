@@ -253,7 +253,7 @@ function SvgCard({ x, y, c, w = 30, h = 42 }: { x: number; y: number; c: string;
   if (c === 'back')
     return (
       <g>
-        <rect x={x} y={y} width={w} height={h} rx={4} fill="#0a84ff" stroke="rgb(255 255 255 / 0.5)" />
+        <rect x={x} y={y} width={w} height={h} rx={4} fill="var(--accent-strong)" stroke="rgb(255 255 255 / 0.5)" />
         <rect x={x + 3} y={y + 3} width={w - 6} height={h - 6} rx={2} fill="none" stroke="rgb(255 255 255 / 0.35)" />
       </g>
     );

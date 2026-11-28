@@ -62,7 +62,7 @@ function Content() {
       <StartingStack />
       <GuideP>
         Use the{' '}
-        <Link to="/chips" className="text-[var(--accent)] hover:underline">
+        <Link to="/chips" className="text-[var(--accent-soft)] hover:underline">
           chip calculator
         </Link>{' '}
         for your own set.

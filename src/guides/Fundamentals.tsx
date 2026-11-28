@@ -15,7 +15,7 @@ function Content() {
         <li>First into the pot: raise or fold, don't limp.<Cite n={RFI} /></li>
         <li>Open about 2.25 bb (many use 2 bb, 2.5 bb on the button).<Cite n={RFI} /> Bigger when weak players will call anyway.<Cite n={SIZING} /></li>
         <li>Play more hands the later you act: see{' '}
-          <Link to="/guides/positions" className="text-[var(--accent)] hover:underline">
+          <Link to="/guides/positions" className="text-[var(--accent-soft)] hover:underline">
             positions
           </Link>.
         </li>

@@ -196,7 +196,7 @@ function Content() {
       <HandChart />
       <GuideP>
         More detail in the{' '}
-        <Link to="/guides/positions" className="text-[var(--accent)] hover:underline">
+        <Link to="/guides/positions" className="text-[var(--accent-soft)] hover:underline">
           positions guide
         </Link>
         .

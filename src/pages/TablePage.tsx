@@ -528,7 +528,7 @@ function ActionBar({ t, onAct }: { t: Table; onAct: ReturnType<typeof useTable>[
           {L.canCheck ? 'Check' : L.toCall >= t.seats[t.toAct!].stack ? `Call all in ${money(L.toCall)}` : `Call ${money(L.toCall)}`} {kbd('C')}
         </button>
         {L.canRaise && (
-          <button type="button" onClick={raise} className={`${btn} bg-[var(--fill)] text-[var(--accent)]`}>
+          <button type="button" onClick={raise} className={`${btn} bg-[var(--fill)] text-[var(--accent-soft)]`}>
             {amount === L.maxTo ? 'All in' : isBet ? `Bet ${money(amount)}` : <span>Raise <span className="hidden sm:inline">to </span>{money(amount)}</span>} {kbd('R')}
           </button>
         )}
@@ -685,7 +685,7 @@ export function TablePage() {
           {mode === 'play' && you && !setup && (
             <Stat label="Stack">
               {(you.stack === 0 && t.street === 'done') || you.sittingOut ? (
-                <button type="button" onClick={rebuy} className="text-[var(--accent)]">
+                <button type="button" onClick={rebuy} className="text-[var(--accent-soft)]">
                   Rebuy {money(settings.buyInBb * settings.bb)}
                 </button>
               ) : (
@@ -820,7 +820,7 @@ export function TablePage() {
             type="button"
             onClick={() => setPicking(opponents.length)}
             aria-label="Add a player"
-            className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--accent)] active:opacity-50"
+            className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--accent-soft)] active:opacity-50"
             style={at(t.seats.length, slots)}
           >
             <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-[var(--accent)]/70 bg-black/30">

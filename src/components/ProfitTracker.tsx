@@ -65,7 +65,7 @@ export function ProfitTracker({ rounds, onReset }: { rounds: number[]; onReset: 
           type="button"
           onClick={onReset}
           disabled={!rounds.length}
-          className="min-h-11 px-2 text-[15px] text-[var(--accent)] active:opacity-50 disabled:text-[var(--text-muted)] disabled:opacity-60"
+          className="min-h-11 px-2 text-[15px] text-[var(--accent-soft)] active:opacity-50 disabled:text-[var(--text-muted)] disabled:opacity-60"
         >
           Reset Tracker
         </button>

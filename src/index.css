@@ -1,24 +1,22 @@
 @import "tailwindcss";
 
-/* Apple Human Interface Guidelines, dark appearance: system background layers, label colors,
-   separator, and systemBlue as the single accent. */
+/* Linear-style dark: near-black canvas, barely lifted surfaces, hairline white borders, indigo accent. */
 :root {
-  --bg-main: #000000; /* systemBackground */
-  --bg-second: #1c1c1e; /* secondarySystemBackground: grouped cells, cards */
-  --bg-third: #2c2c2e; /* tertiarySystemBackground: nested surfaces */
-  --fill: rgb(118 118 128 / 0.24); /* tertiarySystemFill: segmented tracks, gray buttons */
-  --line: rgb(84 84 88 / 0.6); /* separator */
-  --text-muted: rgb(235 235 245 / 0.6); /* secondaryLabel */
-  --text-primary: #ffffff; /* label */
-  --accent: #0a84ff; /* systemBlue (dark) */
-  --accent-soft: #409cff;
-  --accent-strong: #0a84ff;
+  --bg-main: #08090a;
+  --bg-second: #0f1011; /* cards and panels */
+  --bg-third: #18191b; /* nested surfaces, hover */
+  --fill: rgb(255 255 255 / 0.06); /* segmented tracks, gray buttons */
+  --line: rgb(255 255 255 / 0.08); /* hairline borders */
+  --text-muted: #8a8f98;
+  --text-primary: #f7f8f8;
+  --accent: #5e6ad2; /* fills: white text on it passes AA */
+  --accent-soft: #8b93f8; /* accent text on the dark canvas */
+  --accent-strong: #5e6ad2;
   color-scheme: dark;
 }
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', 'Segoe UI',
-    system-ui, sans-serif;
+  --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -26,22 +24,30 @@ html {
   background-color: var(--bg-main);
   font-family: var(--font-sans);
   font-size: 100%;
-  letter-spacing: -0.01em; /* SF tracks tighter at text sizes */
+  font-feature-settings: 'cv01', 'ss03';
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Apple type scale (pt = px here). Large titles track tighter. */
+/* Cards and panels get a hairline edge. Base layer, so a ring or shadow utility still wins. */
+@layer base {
+  [class*='bg-[var(--bg-second)]'] {
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+}
+
+/* Type scale. Large titles track tighter. */
 .text-large-title {
   font-size: 2.125rem; /* 34 */
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 .text-title-2 {
   font-size: 1.375rem; /* 22 */
   line-height: 1.27;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 .text-headline {
@@ -100,7 +106,7 @@ math {
   display: none;
 }
 
-/* Apple HIG: one visible keyboard focus ring everywhere. Unlayered, so it beats `outline-none`. */
+/* One visible keyboard focus ring everywhere. Unlayered, so it beats `outline-none`. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -136,18 +142,9 @@ math {
   margin-bottom: 0.5rem;
 }
 
-/* Raised buttons: lit top edge, darker bottom lip and a soft drop shadow; they press in when clicked.
-   Covers every solid button (blue or gray fill), but not switches. */
+/* Solid buttons: flat, with a faint lit top edge, the way Linear draws them. Not switches. */
 :is(button, a):is([class*='bg-[var(--accent)]'], [class*='bg-[var(--fill)]'], [class*='bg-[#636366]']):not([role='switch'], [role='radio']) {
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.14),
-    inset 0 -4px 0 rgb(0 0 0 / 0.22),
-    0 2px 4px rgb(0 0 0 / 0.45);
-}
-:is(button, a):is([class*='bg-[var(--accent)]'], [class*='bg-[var(--fill)]'], [class*='bg-[#636366]']):not([role='switch'], [role='radio']):active:not(:disabled) {
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    inset 0 -1px 0 rgb(0 0 0 / 0.22),
-    0 1px 2px rgb(0 0 0 / 0.4);
-  translate: 0 2px;
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 0 0 1px rgb(255 255 255 / 0.04);
 }

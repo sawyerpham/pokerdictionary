@@ -39,7 +39,7 @@ export function StudyPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-2 py-3 sm:px-4">
       <div className="mb-4 px-2">
-        <Link to="/study" className="text-[15px] text-[var(--accent)] hover:underline">
+        <Link to="/study" className="text-[15px] text-[var(--accent-soft)] hover:underline">
           Study
         </Link>
         <h1 className="text-title-2">{t.title}</h1>

@@ -71,7 +71,7 @@ export function Solver() {
           {shown.map((c, i) => (
             <CardSlot key={i} card={c} label={`Board card ${i + 1}`} onClick={() => setTarget(i)} />
           ))}
-          <button type="button" onClick={() => setBoard(randomBoard())} className="ml-2 min-h-11 px-2 text-[15px] text-[var(--accent)]">
+          <button type="button" onClick={() => setBoard(randomBoard())} className="ml-2 min-h-11 px-2 text-[15px] text-[var(--accent-soft)]">
             Random
           </button>
         </div>
@@ -113,7 +113,7 @@ export function Solver() {
         {locks.length > 0 && (
           <p className="mt-2 text-[15px]">
             Locked: {locks.map((l) => l.label).join('; ')}{' '}
-            <button type="button" onClick={() => setLocks([])} className="min-h-11 px-2 text-[var(--accent)]">
+            <button type="button" onClick={() => setLocks([])} className="min-h-11 px-2 text-[var(--accent-soft)]">
               Clear (solve again to apply)
             </button>
           </p>
@@ -191,13 +191,13 @@ function Tree({
   return (
     <section className={`${PANEL} mt-4`}>
       <nav aria-label="Line" className="mb-3 flex flex-wrap items-center gap-1 text-[15px]">
-        <button type="button" onClick={() => go([])} className="min-h-11 px-1 text-[var(--accent)]">
+        <button type="button" onClick={() => go([])} className="min-h-11 px-1 text-[var(--accent-soft)]">
           Start
         </button>
         {labels.map((l, k) => (
           <span key={k} className="flex items-center gap-1">
             <span className="text-[var(--text-muted)]">›</span>
-            <button type="button" onClick={() => go(node.history.slice(0, k + 1))} className="min-h-11 px-1 text-[var(--accent)]">
+            <button type="button" onClick={() => go(node.history.slice(0, k + 1))} className="min-h-11 px-1 text-[var(--accent-soft)]">
               {l}
             </button>
           </span>
@@ -220,7 +220,7 @@ function Tree({
           <button type="button" onClick={() => setPicking(true)} className={`${BUTTON} bg-[var(--accent)] text-white`}>
             Pick {next}
           </button>
-          <button type="button" onClick={() => dealRiver(solverCard(node.cards[Math.floor(Math.random() * node.cards.length)]))} className="min-h-11 px-2 text-[15px] text-[var(--accent)]">
+          <button type="button" onClick={() => dealRiver(solverCard(node.cards[Math.floor(Math.random() * node.cards.length)]))} className="min-h-11 px-2 text-[15px] text-[var(--accent-soft)]">
             Random
           </button>
           {picking && (

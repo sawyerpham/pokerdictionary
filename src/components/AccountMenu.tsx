@@ -18,14 +18,14 @@ export function AccountMenu() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={me ? `Account: ${me.email}` : 'Sign in'}
-        className="flex min-h-11 items-center px-2.5 text-[15px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+        className="flex min-h-11 items-center pl-3"
       >
         {me ? (
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-[13px] font-semibold text-white">
             {(me.name ?? me.email)[0].toUpperCase()}
           </span>
         ) : (
-          'Sign in'
+          <span className="rounded-full bg-[var(--text-primary)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--bg-main)] transition hover:bg-white">Sign in</span>
         )}
       </button>
       {open && <AccountDialog failed={failed} next={location.pathname} onClose={() => setOpen(false)} />}
@@ -55,7 +55,7 @@ function AccountDialog({ failed, next, onClose }: { failed: boolean; next: strin
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && ref.current.close()}
-      className="m-auto w-[min(24rem,calc(100%-2rem))] rounded-[14px] bg-[var(--bg-second)] p-5 text-[var(--text-primary)] backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+      className="m-auto w-[min(24rem,calc(100%-2rem))] rounded-[12px] bg-[var(--bg-second)] p-5 text-[var(--text-primary)] backdrop:bg-black/60 backdrop:backdrop-blur-sm"
     >
       {me ? (
         <div className="flex flex-col gap-3">

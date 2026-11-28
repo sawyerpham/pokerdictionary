@@ -78,7 +78,7 @@ export function PrivacyPage() {
       <Section title="Questions">
         <p>
           Open an issue on the site’s{' '}
-          <a href="https://github.com/sawyerpham/pokerdictionary/issues" className="text-[var(--accent)] hover:underline">
+          <a href="https://github.com/sawyerpham/pokerdictionary/issues" className="text-[var(--accent-soft)] hover:underline">
             GitHub page
           </a>
           .

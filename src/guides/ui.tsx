@@ -87,7 +87,7 @@ export function Cite({ n }: { n: number | number[] }) {
       {ns.map((k, i) => (
         <span key={k}>
           {i > 0 && ', '}
-          <a href={`#source-${k}`} className="text-[var(--accent)] hover:underline">
+          <a href={`#source-${k}`} className="text-[var(--accent-soft)] hover:underline">
             {k}
           </a>
         </span>
@@ -106,7 +106,7 @@ export function Sources({ list }: { list: Source[] }) {
         {list.map((s, i) => (
           <li key={i} id={`source-${i + 1}`} className="scroll-mt-20">
             {s.by}. {s.url ? (
-              <a href={s.url} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">
+              <a href={s.url} target="_blank" rel="noreferrer" className="text-[var(--accent-soft)] hover:underline">
                 {s.title}
               </a>
             ) : (

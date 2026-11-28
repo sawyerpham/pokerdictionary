@@ -200,7 +200,7 @@ export function Coach() {
           <button type="button" onClick={() => void send()} disabled={busy || (!text.trim() && !images.length)} className={`${BUTTON} bg-[var(--accent)] text-white`}>
             {msgs.length ? 'Send' : 'Coach me'}
           </button>
-          <button type="button" onClick={() => fileInput.current?.click()} disabled={images.length >= MAX_IMAGES} className="min-h-11 px-2 text-[15px] text-[var(--accent)] disabled:opacity-40">
+          <button type="button" onClick={() => fileInput.current?.click()} disabled={images.length >= MAX_IMAGES} className="min-h-11 px-2 text-[15px] text-[var(--accent-soft)] disabled:opacity-40">
             Add screenshot
           </button>
           {msgs.length > 0 && (

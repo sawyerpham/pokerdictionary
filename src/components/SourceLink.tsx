@@ -2,7 +2,7 @@
 export const SourceLink = ({ by, url }: { by: string; url: string }) => (
   <>
     {' ('}
-    <a href={url} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">
+    <a href={url} target="_blank" rel="noreferrer" className="text-[var(--accent-soft)] hover:underline">
       {by}
     </a>
     {')'}

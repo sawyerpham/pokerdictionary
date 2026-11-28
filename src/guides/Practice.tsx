@@ -10,7 +10,7 @@ const SOURCES = [
 const NOW = 1, REPLAY = 2, ARENA = 3, GTOW = 4, EQ = 5, EQWEB = 6, SOLVER = 7, PT4 = 8, RULES = 9;
 
 const here = (to: string, text: string) => (
-  <Link to={to} className="text-[var(--accent)] hover:underline">
+  <Link to={to} className="text-[var(--accent-soft)] hover:underline">
     {text}
   </Link>
 );
