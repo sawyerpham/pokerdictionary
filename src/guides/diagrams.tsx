@@ -95,7 +95,7 @@ export function SeatTable({ seats, post = false, you, tags = {} }: { seats: stri
   const first = post ? 1 : seats.length <= 3 ? 0 : 3;
   const order = (i: number) => ((i - first + seats.length) % seats.length) + 1;
   const when = post ? 'after the flop' : 'preflop';
-  const btn = at(0, 0.7);
+  const btn = at(0); // the dealer chip sits up and left of the button's seat, opposite its order number
   return (
     <>
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block w-full max-w-[440px]" role="img" aria-label={`${seats.length}-handed table: ${seats.join(', ')}${you ? `; you are ${you}` : ''}`}>
@@ -106,8 +106,8 @@ export function SeatTable({ seats, post = false, you, tags = {} }: { seats: stri
         <text x={cx} y={cy + 13} textAnchor="middle" fontSize={11} fill={MUTED} letterSpacing={2}>
           CLOCKWISE ↻
         </text>
-        <circle cx={btn.x + 18} cy={btn.y - 4} r={9} fill="#fff" />
-        <text x={btn.x + 18} y={btn.y} textAnchor="middle" fontSize={10} fontWeight={700} fill="#000">
+        <circle cx={btn.x - 20} cy={btn.y - 19} r={9} fill="#fff" />
+        <text x={btn.x - 20} y={btn.y - 15.5} textAnchor="middle" fontSize={10} fontWeight={700} fill="#000">
           D
         </text>
         {seats.map((name, i) => {

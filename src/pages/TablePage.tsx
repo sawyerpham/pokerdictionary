@@ -564,7 +564,11 @@ function EquityHint({ t, youIdx }: { t: Table; youIdx: number }) {
       <span className={`font-medium text-[var(--accent-soft)] tabular-nums transition-all ${shown ? '' : 'blur-sm'}`}>
         {eq === undefined ? '—' : `${(eq * 100).toFixed(0)}%`}
       </span>
-      {odds !== undefined && <span className="ml-2 tabular-nums">· pot odds {(odds * 100).toFixed(0)}%</span>}
+      {odds !== undefined && (
+        <span className="ml-3 border-l border-[var(--line)] pl-3 tabular-nums">
+          Pot odds <span className="font-medium text-[var(--text-primary)]">{(odds * 100).toFixed(0)}%</span>
+        </span>
+      )}
     </button>
   );
 }
@@ -580,7 +584,7 @@ function HandLog({ t, name }: { t: Table; name: (i: number) => string }) {
         <ol className="space-y-0.5 text-[13px]">
           {lines.map((e, k) => (
             <li key={k} className={e.kind === 'street' || e.kind === 'show' ? 'pt-1 font-semibold text-[var(--text-muted)]' : e.kind === 'win' ? 'text-amber-300' : ''}>
-              {e.seat !== undefined ? `${name(e.seat)} ${e.text}` : e.text}
+              {e.seat === undefined ? e.text : name(e.seat) === 'You' ? `You ${e.text.replace(/^goes/, 'go').replace(/^(\w+)s/, '$1')}` : `${name(e.seat)} ${e.text}`}
             </li>
           ))}
         </ol>
