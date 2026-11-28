@@ -190,10 +190,6 @@ export function PotOdds() {
           </div>
         )}
       </section>
-      <p className="text-footnote mt-3 px-2 text-[var(--text-muted)]">
-        An all-in has no later bets, so the price and your chance to win settle it. Outs are the next cards that put you ahead. The rule of 2 and 4: each
-        out is worth about 2% per card still to come.
-      </p>
     </>
   );
 }

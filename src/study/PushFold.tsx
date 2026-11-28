@@ -56,10 +56,6 @@ function Chart({ seat, stack, mark }: { seat: Seat; stack: number; mark?: string
           };
         }}
       />
-      <p className="text-footnote mt-2 text-[var(--text-muted)]">
-        Heads-up (or folded to the small blind), no antes, at the equilibrium: neither player can do better by changing. Green plays at this stack; the
-        number is the deepest stack (bb) the hand still {seat === 'SB' ? 'shoves' : 'calls'} at. Computed with this site’s engine.
-      </p>
     </>
   );
 }

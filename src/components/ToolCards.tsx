@@ -20,7 +20,7 @@ export function ToolCards({ onPick }: { onPick?: () => void }) {
                   {t.title}
                   {t.premium && <span className="rounded-full bg-amber-400/15 px-1.5 text-[10px] font-semibold text-amber-300">Premium</span>}
                 </Link>
-                <Help title={t.title} about={t.about} />
+                <Help id={t.slug} title={t.title} about={t.about} />
               </li>
             ))}
           </ul>

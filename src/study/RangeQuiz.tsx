@@ -149,10 +149,6 @@ export function RangeQuiz() {
           ))}
         </div>
       )}
-      <p className="text-footnote mt-3 text-[var(--text-muted)]">
-        Tap or drag to paint; start on a painted hand to erase. The score counts combos: a missed hand and an extra hand cost the same, and pairs,
-        suited and offsuit hands count 6, 4 and 12.{chart.key.startsWith('open') ? '' : ' Hands the chart mixes count as in when they take that action more than half the time.'}
-      </p>
     </section>
   );
 }

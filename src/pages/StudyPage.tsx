@@ -46,7 +46,7 @@ export function StudyPage() {
         {t.slug !== 'daily' && <p className="text-[14px] text-[var(--text-muted)]">{CRUMB[t.group]}</p>}
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-title-2">{t.title}</h1>
-          <Help title={t.title} about={t.about} />
+          <Help id={t.slug} title={t.title} about={t.about} />
         </div>
       </div>
       <Suspense fallback={<p className="px-2 text-[15px] text-[var(--text-muted)]">Loading…</p>}>

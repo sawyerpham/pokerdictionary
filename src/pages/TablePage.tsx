@@ -30,10 +30,10 @@ function Stat({ label, children, onClick, title }: { label: string; children: Re
       type={onClick ? 'button' : undefined}
       title={title}
       onClick={onClick}
-      className={`min-w-0 rounded-lg px-3 py-2 text-left ${onClick ? 'transition-colors hover:bg-white/[0.05]' : ''}`}
+      className={`flex min-w-0 flex-col justify-start rounded-lg px-3 py-2 text-left ${onClick ? 'transition-colors hover:bg-white/[0.05]' : ''}`}
     >
       <p className="text-caption text-[var(--text-muted)]">{label}</p>
-      <div className="text-[15px] font-semibold tabular-nums">{children}</div>
+      <div className="flex min-h-7 items-center text-[15px] font-semibold tabular-nums">{children}</div>
     </Tag>
   );
 }

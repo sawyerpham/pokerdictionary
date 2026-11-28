@@ -105,10 +105,6 @@ export function RangeBuilder() {
       >
         <Grid cell={rangeCell(weights)} onHover={setHover} />
       </div>
-      <p className="text-footnote mt-2 text-[var(--text-muted)]">
-        Tap or drag to paint with the brush weight; start on a hand that already has it to erase. Suited above the diagonal, offsuit
-        below. Saved ranges live in this browser.
-      </p>
     </section>
   );
 }

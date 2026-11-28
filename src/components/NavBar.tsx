@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SHELVES } from '../guides/registry';
-import { TOOLS } from '../study/tools';
+import { PAGES_ABOUT, TOOLS } from '../study/tools';
 import { AccountMenu } from './AccountMenu';
 import { Help } from './Help';
 
 interface Item {
+  id: string;
   to: string;
   title: string;
   about?: string;
@@ -18,7 +19,9 @@ interface Menu {
 }
 
 const tools = (group: string): Item[] =>
-  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ to: `/study/${t.slug}`, title: t.title, about: t.about, premium: t.premium }));
+  TOOLS.filter((t) => t.group === group && t.slug !== 'daily').map((t) => ({ id: t.slug, to: `/study/${t.slug}`, title: t.title, about: t.about, premium: t.premium }));
+
+const pages = (...ids: string[]): Item[] => PAGES_ABOUT.filter((p) => ids.includes(p.id));
 
 // Grouped by what you came to do, the way poker study sites lay out their menus. Daily flop is its own link.
 const MENUS: Menu[] = [
@@ -26,26 +29,13 @@ const MENUS: Menu[] = [
   {
     label: 'Tools',
     sections: [
+      { title: 'Play', items: pages('table') },
       { title: 'Solver', items: tools('Solver') },
-      {
-        title: 'Calculators',
-        items: [
-          {
-            to: '/evaluator',
-            title: 'Evaluator',
-            about: 'Enter the cards at a table and see each player’s chance to win as the hand runs out. Good for settling arguments and for a feel of how far ahead or behind a hand is.',
-          },
-          {
-            to: '/chips',
-            title: 'Chip calculator',
-            about: 'Chip colors, values and how many of each every player starts with, for a home game. A good split keeps the game moving and makes raising the blinds simple.',
-          },
-        ],
-      },
+      { title: 'Calculators', items: pages('evaluator', 'chips') },
     ],
   },
   { label: 'Review', sections: [{ items: tools('Review') }] },
-  { label: 'Learn', sections: SHELVES.map((s) => ({ title: s.title, items: s.items.map((g) => ({ to: `/guides/${g.slug}`, title: g.title })) })) },
+  { label: 'Guides', sections: SHELVES.map((s) => ({ title: s.title, items: s.items.map((g) => ({ id: g.slug, to: `/guides/${g.slug}`, title: g.title })) })) },
 ];
 
 const linkClass = (active: boolean) =>
@@ -56,11 +46,11 @@ export function NavBar() {
   const [open, setOpen] = useState<string>();
   const mouse = useRef(false);
   const header = useRef<HTMLElement>(null);
-  const { pathname } = useLocation();
+  const { pathname, key } = useLocation();
   const isMouse = (e: ReactPointerEvent) => (mouse.current = e.pointerType === 'mouse');
   const close = () => setOpen(undefined);
 
-  useEffect(close, [pathname]);
+  useEffect(close, [key]);
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent) => !header.current?.contains(e.target as Node) && close();
@@ -93,13 +83,11 @@ export function NavBar() {
           Poker Dictionary
         </NavLink>
         <div className="flex flex-wrap items-center justify-center">
-          {plain('/table', 'Table')}
-          {plain('/study/daily', 'Daily flop')}
           {MENUS.map((m) => {
             const items = m.sections.flatMap((s) => s.items);
-            const here = items.some((it) => pathname === it.to) || (m.label === 'Learn' && pathname.startsWith('/guides'));
+            const here = items.some((it) => pathname === it.to) || (m.label === 'Guides' && pathname.startsWith('/guides'));
             const id = `menu-${m.label.toLowerCase()}`;
-            return (
+            const menu = (
               <div key={m.label} className="lg:relative">
                 <button
                   type="button"
@@ -137,7 +125,7 @@ export function NavBar() {
                                   {it.title}
                                   {it.premium && <span className="rounded-full bg-amber-400/15 px-1.5 text-[10px] font-semibold text-amber-300">Premium</span>}
                                 </NavLink>
-                                {it.about && <Help title={it.title} about={it.about} />}
+                                {it.about && <Help id={it.id} title={it.title} about={it.about} />}
                               </li>
                             ))}
                           </ul>
@@ -148,7 +136,10 @@ export function NavBar() {
                 )}
               </div>
             );
+            // Daily flop sits right after Practice.
+            return m.label === 'Practice' ? [menu, <Fragment key="daily">{plain('/study/daily', 'Daily flop')}</Fragment>] : menu;
           })}
+          {plain('/about', 'About')}
           <NavLink
             to="/settings"
             aria-label="Settings"

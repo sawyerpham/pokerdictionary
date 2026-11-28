@@ -57,10 +57,6 @@ export function SizingDrill() {
           </button>
         }
       />
-      <p className="text-footnote mt-3 px-2 text-[var(--text-muted)]">
-        From flops solved with two bet sizes on every street and raises throughout (postflop-solver, within 1% of the pot). Small bets suit
-        boards where your whole range is ahead; big bets suit boards where your strong hands and draws pull apart from the rest.
-      </p>
     </>
   );
 }

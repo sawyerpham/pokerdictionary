@@ -66,7 +66,7 @@ export const TOOLS: { slug: string; title: string; about: string; group: (typeof
   {
     slug: 'reports',
     title: 'Board reports',
-    about: 'How often the solver bets each kind of flop, and at what size, across the whole flop library. Patterns across boards teach you which flops favour you without solving each one.',
+    about: 'How often the solver bets each kind of flop, and at what size, across the whole flop library. Patterns across boards teach you which flops favor you without solving each one.',
     group: 'Solver',
   },
   {
@@ -94,4 +94,11 @@ export const TOOLS: { slug: string; title: string; about: string; group: (typeof
     group: 'Review',
     premium: true,
   },
+];
+
+// The pages outside /study that have "?" notes and About sections too.
+export const PAGES_ABOUT = [
+  { id: 'table', to: '/table', title: 'Table', about: 'Play no-limit hold’em against computer players you can customize, or watch them play each other. A free place to try ideas, with an equity hint to check your reads.' },
+  { id: 'evaluator', to: '/evaluator', title: 'Evaluator', about: 'Enter the cards at a table and see each player’s chance to win as the hand runs out. Good for settling arguments and for a feel of how far ahead or behind a hand is.' },
+  { id: 'chips', to: '/chips', title: 'Chip calculator', about: 'Chip colors, values and how many of each every player starts with, for a home game. A good split keeps the game moving and makes raising the blinds simple.' },
 ];

@@ -1,7 +1,8 @@
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
 
 /** A "?" button that opens a short note on what a tool is and why it's worth using. */
-export function Help({ title, about }: { title: string; about: string }) {
+export function Help({ id, title, about }: { id: string; title: string; about: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   return (
     <>
@@ -30,7 +31,10 @@ export function Help({ title, about }: { title: string; about: string }) {
       >
         <h2 className="mb-2 text-[17px] font-semibold tracking-[-0.01em]">{title}</h2>
         <p className="text-[15px] leading-relaxed font-normal text-[var(--text-muted)]">{about}</p>
-        <form method="dialog" className="mt-4 text-right">
+        <form method="dialog" className="mt-4 flex items-center justify-between gap-3">
+          <Link to={`/about#${id}`} onClick={() => dialog.current?.close()} className="flex min-h-9 items-center text-[14px] text-[var(--accent-soft)] hover:underline">
+            More in About
+          </Link>
           <button className="min-h-9 rounded-[8px] bg-[var(--fill)] px-3 text-[14px] font-medium">Got it</button>
         </form>
       </dialog>

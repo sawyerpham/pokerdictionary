@@ -143,9 +143,6 @@ export function Reports() {
               {all ? 'Show the extremes' : `Show all ${sorted.length}`}
             </button>
           )}
-          <p className="text-footnote mt-3 text-[var(--text-muted)]">
-            Suits are shown one way; each flop stands for every suit pattern like it. Averages weigh each flop by how often it comes.
-          </p>
         </section>
       )}
     </>

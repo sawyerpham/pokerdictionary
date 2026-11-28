@@ -338,16 +338,6 @@ export function Facing() {
           )}
         </>
       )}
-      <p className="text-footnote mt-3 px-2 text-[var(--text-muted)]">
-        Six-max, {t.stack} bb, 5% rake, everyone else folds.{t.stack !== 100 && ' Away from 100 bb the opening ranges are still the 100 bb charts and the model is less tested.'} Opening ranges are the site’s opening charts. The rest is this site’s preflop model: each
-        decision solved, with play after the flop estimated from equity and position, then tuned so its overall frequencies match published solver
-        output (
-        <a href="https://beyondgto.com/defense" target="_blank" rel="noreferrer" className="text-[var(--accent-soft)] hover:underline">
-          BeyondGTO
-        </a>
-        ) within about 3 points. Hand by hand it’s close, not exact: solvers sometimes just call with the strongest hands to trap and pick other
-        bluffs, where this model raises its best hands every time.
-      </p>
     </>
   );
 }

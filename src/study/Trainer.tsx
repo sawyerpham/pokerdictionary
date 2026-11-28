@@ -341,13 +341,6 @@ export function Trainer() {
           {last && <Grade d={last} bb={hand.bb} />}
         </section>
       )}
-      {street === 3 && (
-        <p className="text-footnote mt-3 px-2 text-[var(--text-muted)]">
-          Flops come from a library of solved flops (postflop-solver, within 1% of the pot of perfect play), with the site’s opening and facing-a-raise
-          ranges. To fit in memory those solves have raises on the flop only; once the flop is done, the turn and river are solved live in your browser,
-          raises included.
-        </p>
-      )}
     </>
   );
 }
